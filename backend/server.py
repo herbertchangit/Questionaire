@@ -15,6 +15,9 @@ import jwt
 from emergentintegrations.llm.openai import OpenAITextToSpeech
 import base64
 import asyncio
+import resend
+import secrets
+import string
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
