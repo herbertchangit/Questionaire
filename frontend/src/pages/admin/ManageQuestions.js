@@ -186,7 +186,13 @@ function ManageQuestions() {
           </div>
 
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              if (showForm) {
+                resetForm();
+              } else {
+                setShowForm(true);
+              }
+            }}
             className="w-full md:w-auto bg-violet-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
             data-testid="add-question-button"
           >
@@ -202,7 +208,9 @@ function ManageQuestions() {
             className="bg-white neo-border neo-shadow-deep rounded-2xl p-6 md:p-8 mb-8"
             data-testid="question-form"
           >
-            <h2 className="text-2xl font-black text-zinc-950 mb-6">New Question</h2>
+            <h2 className="text-2xl font-black text-zinc-950 mb-6">
+              {editingQuestion ? 'Edit Question' : 'New Question'}
+            </h2>
             
             <form onSubmit={handleSubmitQuestion} className="space-y-6">
               <div>
