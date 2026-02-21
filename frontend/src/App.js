@@ -29,6 +29,7 @@ function App() {
           <Route path="/admin" element={token && user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
           <Route path="/admin/quiz/create" element={token && user?.role === 'admin' ? <CreateQuiz /> : <Navigate to="/login" />} />
           <Route path="/admin/quiz/:id/questions" element={token && user?.role === 'admin' ? <ManageQuestions /> : <Navigate to="/login" />} />
+          <Route path="/admin/users" element={token && user?.role === 'admin' ? <UserManagement /> : <Navigate to="/login" />} />
           
           <Route path="/" element={<Navigate to={token ? "/dashboard" : "/login"} />} />
         </Routes>
