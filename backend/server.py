@@ -223,6 +223,79 @@ async def get_user_stats(current_user: User = Depends(get_current_user)):
         "total_score": total_score
     }
 
+@api_router.post("/users/change-password")
+async def change_password(password_data: PasswordChange, current_user: User = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not pwd_context.verify(password_data.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    new_hashed_password = pwd_context.hash(password_data.new_password)
+    
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"password": new_hashed_password}}
+    )
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #8B5CF6 0%, #FF4785 100%); color: white; padding: 30px; text-align: center; border-radius: 10px; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 10px; margin: 20px 0; }}
+            .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 20px; }}
+            .button {{ display: inline-block; background: #8B5CF6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+            .success-box {{ background: #10B981; color: white; padding: 15px; text-align: center; font-weight: bold; border-radius: 5px; margin: 20px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>⚡ QuizPop Password Changed</h1>
+            </div>
+            <div class="content">
+                <p>Hello <strong>{user['name']}</strong>,</p>
+                <div class="success-box">✅ Your password has been successfully changed</div>
+                <p>This email confirms that your QuizPop password was recently updated.</p>
+                <p><strong>Details:</strong></p>
+                <ul>
+                    <li>Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</li>
+                    <li>Account: {user['email']}</li>
+                </ul>
+                <p>If you didn't make this change, please contact support immediately.</p>
+                <a href="https://quiz-hub-pro.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
+            </div>
+            <div class="footer">
+                <p>This is an automated email from QuizPop. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [user["email"]],
+            "subject": "🔐 Your QuizPop Password Has Been Changed",
+            "html": html_content
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        email_sent = True
+    except Exception as e:
+        logger.error(f"Failed to send password change email: {str(e)}")
+        email_sent = False
+    
+    return {
+        "message": "Password changed successfully",
+        "email_sent": email_sent
+    }
+
 @api_router.get("/categories")
 async def get_categories():
     categories = await db.categories.find({}, {"_id": 0}).limit(50).to_list(50)
