@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, Volume2, Video, Type, Loader } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Volume2, Video, Type, Loader, Edit } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -14,6 +14,7 @@ function ManageQuestions() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
   
   const [questionText, setQuestionText] = useState('');
   const [questionType, setQuestionType] = useState('text');
