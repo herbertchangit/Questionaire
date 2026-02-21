@@ -44,7 +44,9 @@ function Dashboard() {
   const handleLogout = () => {
     localStorage.clear();
     toast.success('Logged out successfully');
-    navigate('/login');
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 500);
   };
 
   if (loading) {
