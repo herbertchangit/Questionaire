@@ -100,6 +100,14 @@ function Dashboard() {
                 </button>
               )}
               <button
+                onClick={() => navigate('/settings')}
+                className="bg-violet-500 text-white font-bold px-6 py-3 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
+                data-testid="settings-button"
+              >
+                <Settings className="w-5 h-5" />
+                Settings
+              </button>
+              <button
                 onClick={handleLogout}
                 className="bg-white text-zinc-950 font-bold px-6 py-3 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
                 data-testid="logout-button"
