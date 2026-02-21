@@ -76,35 +76,66 @@ function ManageQuestions() {
     setSubmitting(true);
 
     const token = localStorage.getItem('token');
+    
+    const questionData = {
+      quiz_id: id,
+      text: questionText,
+      type: questionType,
+      media_url: mediaUrl || null,
+      options: options.filter(opt => opt.trim() !== ''),
+      correct_answer: correctAnswer,
+      points
+    };
+
     try {
-      await axios.post(
-        `${API_URL}/api/admin/questions`,
-        {
-          quiz_id: id,
-          text: questionText,
-          type: questionType,
-          media_url: mediaUrl || null,
-          options: options.filter(opt => opt.trim() !== ''),
-          correct_answer: correctAnswer,
-          points
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (editingQuestion) {
+        // Update existing question
+        await axios.put(
+          `${API_URL}/api/admin/questions/${editingQuestion.id}`,
+          questionData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        toast.success('Question updated successfully!');
+      } else {
+        // Create new question
+        await axios.post(
+          `${API_URL}/api/admin/questions`,
+          questionData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        toast.success('Question added successfully!');
+      }
       
-      toast.success('Question added successfully!');
-      setQuestionText('');
-      setMediaUrl('');
-      setOptions(['', '', '', '']);
-      setCorrectAnswer(0);
-      setPoints(10);
-      setQuestionType('text');
-      setShowForm(false);
+      resetForm();
       fetchData();
     } catch (error) {
-      toast.error('Failed to add question');
+      toast.error(editingQuestion ? 'Failed to update question' : 'Failed to add question');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setQuestionText('');
+    setMediaUrl('');
+    setOptions(['', '', '', '']);
+    setCorrectAnswer(0);
+    setPoints(10);
+    setQuestionType('text');
+    setShowForm(false);
+    setEditingQuestion(null);
+  };
+
+  const handleEditQuestion = (question) => {
+    setEditingQuestion(question);
+    setQuestionText(question.text);
+    setQuestionType(question.type);
+    setMediaUrl(question.media_url || '');
+    setOptions(question.options);
+    setCorrectAnswer(question.correct_answer);
+    setPoints(question.points);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteQuestion = async (questionId) => {
