@@ -186,7 +186,7 @@ function CreateQuiz() {
               )}
             </button>
           </form>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
