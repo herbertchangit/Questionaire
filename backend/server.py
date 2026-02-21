@@ -456,6 +456,29 @@ async def delete_question(question_id: str, admin: User = Depends(get_admin_user
     
     return {"message": "Question deleted successfully"}
 
+@api_router.put("/admin/questions/{question_id}")
+async def update_question(question_id: str, question_data: QuestionCreate, admin: User = Depends(get_admin_user)):
+    question = await db.questions.find_one({"id": question_id}, {"_id": 0})
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+    
+    update_doc = {
+        "text": question_data.text,
+        "type": question_data.type,
+        "media_url": question_data.media_url,
+        "options": question_data.options,
+        "correct_answer": question_data.correct_answer,
+        "points": question_data.points
+    }
+    
+    await db.questions.update_one(
+        {"id": question_id},
+        {"$set": update_doc}
+    )
+    
+    updated_question = await db.questions.find_one({"id": question_id}, {"_id": 0})
+    return Question(**updated_question)
+
 @api_router.post("/admin/questions/tts")
 async def generate_tts(tts_request: TTSRequest, admin: User = Depends(get_admin_user)):
     try:
