@@ -223,7 +223,7 @@ async def get_quizzes(current_user: User = Depends(get_current_user)):
     quizzes = await db.quizzes.find(
         {"is_published": True, "level_required": {"$lte": current_user.level}},
         {"_id": 0}
-    ).to_list(1000)
+    ).limit(50).to_list(50)
     
     for quiz in quizzes:
         quiz["completed"] = quiz["id"] in current_user.completed_quizzes
