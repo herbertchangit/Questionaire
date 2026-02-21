@@ -38,6 +38,9 @@ JWT_EXPIRATION_HOURS = int(os.environ.get('JWT_EXPIRATION_HOURS', 720))
 
 tts_client = OpenAITextToSpeech(api_key=os.environ.get('EMERGENT_LLM_KEY'))
 
+resend.api_key = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
