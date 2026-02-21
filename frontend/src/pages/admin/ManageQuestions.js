@@ -441,6 +441,13 @@ function ManageQuestions() {
                     </div>
                     
                     <button
+                      onClick={() => handleEditQuestion(question)}
+                      className="bg-blue-500 text-white font-bold px-4 py-2 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
+                      data-testid={`edit-question-button-${question.id}`}
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
                       onClick={() => handleDeleteQuestion(question.id)}
                       className="bg-red-500 text-white font-bold px-4 py-2 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
                       data-testid={`delete-question-button-${question.id}`}
