@@ -20,6 +20,11 @@ function Dashboard() {
 
   const fetchData = async () => {
     const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    
     try {
       const [userRes, statsRes, quizzesRes] = await Promise.all([
         axios.get(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -31,10 +36,11 @@ function Dashboard() {
       setStats(statsRes.data);
       setQuizzes(quizzesRes.data);
     } catch (error) {
-      toast.error('Failed to load data');
       if (error.response?.status === 401) {
         localStorage.clear();
         navigate('/login');
+      } else {
+        toast.error('Failed to load data');
       }
     } finally {
       setLoading(false);
