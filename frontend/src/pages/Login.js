@@ -18,12 +18,21 @@ function Login() {
     setLoading(true);
 
     try {
+      console.log('Attempting login to:', `${API_URL}/api/auth/login`);
       const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+      console.log('Login response:', response.data);
+      
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      
       toast.success('Welcome back! 🎉');
-      navigate('/dashboard');
+      
+      // Force page reload after setting localStorage
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
     } catch (error) {
+      console.error('Login error:', error);
       toast.error(error.response?.data?.detail || 'Login failed');
     } finally {
       setLoading(false);
