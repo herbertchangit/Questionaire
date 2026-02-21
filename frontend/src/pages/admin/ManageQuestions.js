@@ -370,12 +370,12 @@ function ManageQuestions() {
                 {submitting ? (
                   <>
                     <Loader className="w-6 h-6 animate-spin" />
-                    Adding...
+                    {editingQuestion ? 'Updating...' : 'Adding...'}
                   </>
                 ) : (
                   <>
-                    <Plus className="w-6 h-6" />
-                    Add Question
+                    {editingQuestion ? <Edit className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
+                    {editingQuestion ? 'Update Question' : 'Add Question'}
                   </>
                 )}
               </button>
