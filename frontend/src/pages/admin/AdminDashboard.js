@@ -91,14 +91,24 @@ function AdminDashboard() {
           transition={{ delay: 0.1 }}
           className="bg-white neo-border neo-shadow rounded-2xl p-6 mb-8"
         >
-          <button
-            onClick={() => navigate('/admin/quiz/create')}
-            className="w-full md:w-auto bg-violet-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
-            data-testid="create-quiz-button"
-          >
-            <Plus className="w-6 h-6" />
-            Create New Quiz
-          </button>
+          <div className="flex flex-col md:flex-row gap-4">
+            <button
+              onClick={() => navigate('/admin/quiz/create')}
+              className="flex-1 bg-violet-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
+              data-testid="create-quiz-button"
+            >
+              <Plus className="w-6 h-6" />
+              Create New Quiz
+            </button>
+            <button
+              onClick={() => navigate('/admin/users')}
+              className="flex-1 bg-pink-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
+              data-testid="manage-users-button"
+            >
+              <Users className="w-6 h-6" />
+              Manage Users
+            </button>
+          </div>
         </motion.div>
 
         <div>
