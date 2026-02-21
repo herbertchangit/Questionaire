@@ -356,7 +356,7 @@ async def create_question(question_data: QuestionCreate, admin: User = Depends(g
 
 @api_router.get("/admin/questions/{quiz_id}")
 async def get_admin_questions(quiz_id: str, admin: User = Depends(get_admin_user)):
-    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0}).to_list(1000)
+    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0}).limit(100).to_list(100)
     return questions
 
 @api_router.delete("/admin/questions/{question_id}")
