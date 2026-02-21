@@ -426,7 +426,7 @@ def main():
         # Public API Tests
         ("Get Categories", tester.test_get_categories),
         ("Get Available Quizzes", tester.test_get_quizzes),
-        ("Get Quiz Details", tester.test_quiz_details),
+        ("Get Quiz Details", tester.test_get_quiz_details),
         ("Submit Quiz", tester.test_submit_quiz),
         
         # Admin Authentication Tests
