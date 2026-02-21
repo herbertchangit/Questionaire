@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import QuizPage from './pages/QuizPage';
 import ResultPage from './pages/ResultPage';
+import UserSettings from './pages/UserSettings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CreateQuiz from './pages/admin/CreateQuiz';
 import ManageQuestions from './pages/admin/ManageQuestions';
