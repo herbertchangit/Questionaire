@@ -23,7 +23,11 @@ function Register() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       toast.success('Account created! Let\'s start! 🚀');
-      navigate('/dashboard');
+      
+      // Force page reload after setting localStorage
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Registration failed');
     } finally {
