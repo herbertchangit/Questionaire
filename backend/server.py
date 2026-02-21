@@ -239,10 +239,9 @@ async def get_quiz(quiz_id: str, current_user: User = Depends(get_current_user))
     if quiz["level_required"] > current_user.level:
         raise HTTPException(status_code=403, detail="Level requirement not met")
     
-    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0}).to_list(1000)
-    public_questions = [QuestionPublic(**{k: v for k, v in q.items() if k != "correct_answer"}) for q in questions]
+    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0, "correct_answer": 0}).to_list(100)
     
-    return {**quiz, "questions": public_questions}
+    return {**quiz, "questions": questions}
 
 @api_router.post("/quizzes/{quiz_id}/submit")
 async def submit_quiz(quiz_id: str, submission: QuizSubmission, current_user: User = Depends(get_current_user)):
