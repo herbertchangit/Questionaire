@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Zap, Trophy, Star, LogOut, Crown, Play, Lock, CheckCircle } from 'lucide-react';
+import { Zap, Trophy, Star, LogOut, Crown, Play, Lock, CheckCircle, Settings } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
