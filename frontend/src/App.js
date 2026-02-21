@@ -9,6 +9,7 @@ import ResultPage from './pages/ResultPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CreateQuiz from './pages/admin/CreateQuiz';
 import ManageQuestions from './pages/admin/ManageQuestions';
+import UserManagement from './pages/admin/UserManagement';
 import './App.css';
 
 function App() {
