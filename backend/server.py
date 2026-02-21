@@ -202,7 +202,7 @@ async def get_user_stats(current_user: User = Depends(get_current_user)):
     total_quizzes = await db.quizzes.count_documents({"is_published": True})
     completed = len(current_user.completed_quizzes)
     
-    results = await db.quiz_results.find({"user_id": current_user.id}, {"_id": 0}).to_list(1000)
+    results = await db.quiz_results.find({"user_id": current_user.id}, {"_id": 0, "score": 1}).to_list(1000)
     total_score = sum(r["score"] for r in results)
     
     return {
