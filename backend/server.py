@@ -215,7 +215,7 @@ async def get_user_stats(current_user: User = Depends(get_current_user)):
 
 @api_router.get("/categories")
 async def get_categories():
-    categories = await db.categories.find({}, {"_id": 0}).to_list(100)
+    categories = await db.categories.find({}, {"_id": 0}).limit(50).to_list(50)
     return categories
 
 @api_router.get("/quizzes")
