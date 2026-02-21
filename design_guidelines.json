@@ -1,0 +1,141 @@
+{
+  "project_name": "QuizPop: The Anti-Boring Quiz App",
+  "design_philosophy": {
+    "name": "Neo-Brutalist Gamified Pop",
+    "description": "High energy, tactile, and 'juicy'. A rejection of sterile corporate SaaS. We use thick borders, hard shadows, vibrant colors, and exaggerated spacing to create a fun, arcade-like experience.",
+    "core_principles": [
+      "No blur shadows. Hard shadows only (e.g., box-shadow: 4px 4px 0px 0px #000).",
+      "Thick borders (2px-3px) on everything interactive.",
+      "High saturation colors. No muted pastels.",
+      "Juicy interactions: Buttons must physically move on click.",
+      "Micro-animations everywhere."
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "\"Fredoka\", \"Nunito\", sans-serif",
+      "body": "\"DM Sans\", \"Inter\", sans-serif",
+      "mono": "\"JetBrains Mono\", monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-6xl font-black tracking-tight leading-none",
+      "h2": "text-3xl md:text-4xl font-bold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-bold",
+      "body_lg": "text-lg md:text-xl font-medium leading-relaxed",
+      "body": "text-base font-normal leading-relaxed",
+      "caption": "text-sm font-bold uppercase tracking-widest"
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;700&family=Fredoka:wght@300..700&family=JetBrains+Mono:wght@400;700&display=swap');"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": "#FFFFFF",
+      "foreground": "#18181b",
+      "primary": "#8B5CF6",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#FF4785",
+      "secondary_foreground": "#FFFFFF",
+      "accent": "#FACC15",
+      "accent_foreground": "#18181b",
+      "success": "#22C55E",
+      "destructive": "#EF4444",
+      "border": "#18181b",
+      "input": "#E4E4E7",
+      "ring": "#8B5CF6",
+      "muted": "#F3F4F6"
+    },
+    "usage": {
+      "body_bg": "bg-yellow-50/30",
+      "card_bg": "bg-white",
+      "text_primary": "text-zinc-950",
+      "text_secondary": "text-zinc-600",
+      "border_color": "border-zinc-950"
+    }
+  },
+  "visual_enhancers": {
+    "borders": {
+      "default": "border-2 border-zinc-950",
+      "thick": "border-4 border-zinc-950"
+    },
+    "shadows": {
+      "default": "shadow-[4px_4px_0px_0px_rgba(24,24,27,1)]",
+      "hover": "hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]",
+      "active": "active:shadow-none active:translate-x-[2px] active:translate-y-[2px]",
+      "deep": "shadow-[8px_8px_0px_0px_rgba(24,24,27,1)]"
+    },
+    "radius": {
+      "default": "rounded-xl",
+      "button": "rounded-full",
+      "card": "rounded-2xl"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-violet-500 text-white font-black text-lg px-8 py-4 rounded-xl border-2 border-zinc-950 shadow-[4px_4px_0px_0px_rgba(24,24,27,1)] hover:translate-y-1 hover:shadow-none transition-all active:translate-y-1 active:shadow-none uppercase tracking-wide",
+      "secondary": "bg-white text-zinc-950 font-bold text-lg px-8 py-4 rounded-xl border-2 border-zinc-950 shadow-[4px_4px_0px_0px_rgba(24,24,27,1)] hover:bg-zinc-50 hover:translate-y-1 hover:shadow-none transition-all",
+      "destructive": "bg-red-500 text-white font-bold px-6 py-3 rounded-xl border-2 border-zinc-950 shadow-[4px_4px_0px_0px_rgba(24,24,27,1)] hover:translate-y-1 hover:shadow-none transition-all",
+      "ghost": "bg-transparent text-zinc-950 font-bold hover:bg-zinc-100 rounded-lg px-4 py-2 transition-colors"
+    },
+    "cards": {
+      "base": "bg-white border-2 border-zinc-950 rounded-2xl shadow-[4px_4px_0px_0px_rgba(24,24,27,1)] p-6 relative overflow-hidden",
+      "interactive": "bg-white border-2 border-zinc-950 rounded-2xl shadow-[4px_4px_0px_0px_rgba(24,24,27,1)] p-6 cursor-pointer hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(24,24,27,1)] transition-all duration-200"
+    },
+    "inputs": {
+      "default": "flex h-12 w-full rounded-xl border-2 border-zinc-950 bg-white px-3 py-2 text-lg ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-medium"
+    },
+    "progress": {
+      "container": "h-6 w-full bg-zinc-100 border-2 border-zinc-950 rounded-full overflow-hidden",
+      "bar": "h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 border-r-2 border-zinc-950 transition-all duration-500 ease-out"
+    }
+  },
+  "layout": {
+    "spacing_scale": ["0", "1", "2", "4", "6", "8", "12", "16", "24", "32"],
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grids": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8",
+      "quiz_options": "grid grid-cols-1 sm:grid-cols-2 gap-6"
+    }
+  },
+  "assets": {
+    "mascot": {
+      "happy": "https://images.pexels.com/photos/8834290/pexels-photo-8834290.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "floating": "https://images.unsplash.com/photo-1753290642440-520678393e2c?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "trophy": "https://images.unsplash.com/photo-1627435407254-1e01816ca5e7?crop=entropy&cs=srgb&fm=jpg&q=85"
+    },
+    "backgrounds": {
+      "grid": "https://images.unsplash.com/photo-1758352512406-07608e5da001?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "checkered": "https://images.unsplash.com/photo-1602932058189-19e1b46e44b9?crop=entropy&cs=srgb&fm=jpg&q=85"
+    },
+    "badges": {
+      "gold": "https://images.unsplash.com/photo-1639380495145-a5d07d844039?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "star": "https://images.pexels.com/photos/9949424/pexels-photo-9949424.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  },
+  "libraries": {
+    "icons": "lucide-react",
+    "charts": "recharts",
+    "animation": "framer-motion",
+    "toast": "sonner",
+    "utils": "clsx, tailwind-merge",
+    "confetti": "canvas-confetti"
+  },
+  "instructions_to_main_agent": [
+    "NEVER use default soft shadows. ALWAYS use the custom hard shadow utility `shadow-[4px_4px_0px_0px_rgba(24,24,27,1)]`.",
+    "Borders are mandatory. Every card, button, and input must have a `border-2 border-zinc-950`.",
+    "Use the provided image URLs for specific sections: Mascot for welcome/level-up, Grid pattern for quiz background.",
+    "Use `framer-motion` for page transitions (slide up/down) and element entry (staggered fade-up).",
+    "When a user completes a quiz or levels up, trigger `canvas-confetti`.",
+    "Quiz Layout: Use a centralized card layout with massive typography for the question.",
+    "Timers: Make them visual (circular progress or reducing bar) and urgent (color shift from green to red).",
+    "Accessibility: Ensure high contrast. The black text on white/yellow/violet is safe, but check smaller text.",
+    "Mobile Responsive: Buttons must be full-width on mobile (`w-full`). Touch targets must be at least 44px."
+  ],
+  "UNIVERSAL_GUIDELINES": {
+    "theme_strategy": "Light Mode Default (High Contrast)",
+    "mobile_first": true,
+    "interactive_elements": "Must provide visual feedback on press (scale down or remove shadow).",
+    "empty_states": "Use the mascot images for empty states with encouraging text."
+  }
+}
