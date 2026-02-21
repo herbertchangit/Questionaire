@@ -399,6 +399,123 @@ async def create_category(category_data: Category, admin: User = Depends(get_adm
     await db.categories.insert_one(category_doc)
     return Category(**category_doc)
 
+# User Management Endpoints
+@api_router.get("/admin/users")
+async def get_all_users(admin: User = Depends(get_admin_user)):
+    users = await db.users.find({}, {"_id": 0, "password": 0}).limit(200).to_list(200)
+    return users
+
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, admin: User = Depends(get_admin_user)):
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.users.delete_one({"id": user_id})
+    await db.quiz_results.delete_many({"user_id": user_id})
+    
+    return {"message": f"User {user['email']} deleted successfully"}
+
+@api_router.post("/admin/users/{user_id}/reset-password")
+async def reset_user_password(user_id: str, admin: User = Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate random password
+    new_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+    hashed_password = pwd_context.hash(new_password)
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"password": hashed_password}}
+    )
+    
+    # Send email with new password
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #8B5CF6 0%, #FF4785 100%); color: white; padding: 30px; text-align: center; border-radius: 10px; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 10px; margin: 20px 0; }}
+            .password-box {{ background: white; border: 2px solid #8B5CF6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; border-radius: 5px; margin: 20px 0; }}
+            .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 20px; }}
+            .button {{ display: inline-block; background: #8B5CF6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>⚡ QuizPop Password Reset</h1>
+            </div>
+            <div class="content">
+                <p>Hello <strong>{user['name']}</strong>,</p>
+                <p>Your password has been reset by an administrator. Your new temporary password is:</p>
+                <div class="password-box">{new_password}</div>
+                <p><strong>Important:</strong> Please log in and change this password immediately for security reasons.</p>
+                <a href="https://quiz-hub-pro.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
+                <p>If you didn't request this password reset, please contact support immediately.</p>
+            </div>
+            <div class="footer">
+                <p>This is an automated email from QuizPop. Please do not reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [user["email"]],
+            "subject": "🔐 Your QuizPop Password Has Been Reset",
+            "html": html_content
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        email_sent = True
+        message = f"Password reset successfully. Email sent to {user['email']}"
+    except Exception as e:
+        logger.error(f"Failed to send email: {str(e)}")
+        email_sent = False
+        message = f"Password reset successfully but email failed to send"
+    
+    return {
+        "message": message,
+        "email_sent": email_sent,
+        "new_password": new_password,
+        "user_email": user["email"]
+    }
+
+@api_router.post("/admin/users/{user_id}/reset-progress")
+async def reset_user_progress(user_id: str, admin: User = Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {
+            "$set": {
+                "level": 1,
+                "points": 0,
+                "completed_quizzes": []
+            }
+        }
+    )
+    
+    await db.quiz_results.delete_many({"user_id": user_id})
+    
+    return {
+        "message": f"Progress reset successfully for {user['name']}",
+        "user_email": user["email"]
+    }
+
 app.include_router(api_router)
 
 app.add_middleware(
