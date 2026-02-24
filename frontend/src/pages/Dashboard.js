@@ -209,10 +209,14 @@ function Dashboard() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between mb-4 text-sm font-bold text-zinc-600">
+                  <div className="flex items-center justify-between mb-2 text-sm font-bold text-zinc-600">
                     <span>📊 Level {quiz.level_required}</span>
                     <span>⏱️ {quiz.duration_minutes} min</span>
                     <span>📝 {quiz.questions_count} Qs</span>
+                  </div>
+                  
+                  <div className="text-xs font-medium text-zinc-400 mb-4" data-testid={`quiz-date-${quiz.id}`}>
+                    📅 Created: {new Date(quiz.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                   </div>
 
                   {quiz.completed ? (

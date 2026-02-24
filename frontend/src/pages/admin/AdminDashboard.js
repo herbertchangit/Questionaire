@@ -144,6 +144,9 @@ function AdminDashboard() {
                       <p className="text-sm font-bold text-zinc-500">
                         {quiz.questions_count} questions • {quiz.duration_minutes} minutes
                       </p>
+                      <p className="text-xs font-medium text-zinc-400 mt-1" data-testid={`admin-quiz-date-${quiz.id}`}>
+                        📅 Created: {new Date(quiz.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </p>
                     </div>
                     
                     <div className="flex gap-3">
