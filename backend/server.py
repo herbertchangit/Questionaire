@@ -268,7 +268,7 @@ async def change_password(password_data: PasswordChange, current_user: User = De
                     <li>Account: {user['email']}</li>
                 </ul>
                 <p>If you didn't make this change, please contact support immediately.</p>
-                <a href="https://quiz-hub-pro.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
+                <a href="https://quizpop-preview-1.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
             </div>
             <div class="footer">
                 <p>This is an automated email from QuizPop. Please do not reply to this email.</p>
@@ -559,7 +559,7 @@ async def reset_user_password(user_id: str, admin: User = Depends(get_admin_user
                 <p>Your password has been reset by an administrator. Your new temporary password is:</p>
                 <div class="password-box">{new_password}</div>
                 <p><strong>Important:</strong> Please log in and change this password immediately for security reasons.</p>
-                <a href="https://quiz-hub-pro.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
+                <a href="https://quizpop-preview-1.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
                 <p>If you didn't request this password reset, please contact support immediately.</p>
             </div>
             <div class="footer">

@@ -5,7 +5,7 @@ from datetime import datetime
 from time import sleep
 
 class QuizAppAPITester:
-    def __init__(self, base_url="https://quiz-hub-pro.preview.emergentagent.com"):
+    def __init__(self, base_url="https://quizpop-preview-1.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.admin_token = None
@@ -411,7 +411,7 @@ class QuizAppAPITester:
 def main():
     """Main test execution"""
     print("🚀 Starting QuizPop API Testing...")
-    print(f"Testing against: https://quiz-hub-pro.preview.emergentagent.com")
+    print(f"Testing against: https://quizpop-preview-1.preview.emergentagent.com")
     
     tester = QuizAppAPITester()
     
