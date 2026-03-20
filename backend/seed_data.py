@@ -46,7 +46,7 @@ async def seed_database():
     user_id = str(uuid.uuid4())
     user = {
         "id": user_id,
-        "name": "Demo User",
+        "name": "Demo mv,.cmxzvm",
         "email": "demo@quiz.com",
         "password": pwd_context.hash("demo123"),
         "level": 1,
