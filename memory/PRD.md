@@ -14,10 +14,11 @@ Design an Online Quiz App (web & mobile friendly) with three criteria:
 - **Admin Panel:** Full admin panel for quiz/user management
 - **User Management (Admin):** List, remove, reset passwords (with email), reset progress
 - **User Settings:** Password change, theme selection
+- **Success Metrics:** DAU, Quiz completion rate, Average score improvement, Retention (3-day/7-day)
 
 ## Tech Stack
 - **Backend:** FastAPI, Python, MongoDB
-- **Frontend:** React, Tailwind CSS, Shadcn UI
+- **Frontend:** React, Tailwind CSS, Shadcn UI, Recharts
 - **Authentication:** JWT with bcrypt password hashing
 - **Integrations:** OpenAI TTS (Emergent LLM Key), Resend (user API key required)
 
@@ -27,11 +28,13 @@ Design an Online Quiz App (web & mobile friendly) with three criteria:
 - [x] JWT-based user/admin login
 - [x] User registration
 - [x] Role-based access (user/admin)
+- [x] Activity logging for analytics
 
 ### User Dashboard
 - [x] Display user stats (level, points, completed quizzes)
 - [x] Quiz listing with level-based access control
 - [x] Quiz completion tracking
+- [x] Quiz creation date display
 - [x] Theme selection (Default, Ocean, Sunset)
 - [x] Password change functionality
 
@@ -47,9 +50,19 @@ Design an Online Quiz App (web & mobile friendly) with three criteria:
 - [x] OpenAI TTS integration for audio generation
 - [x] User management (list, delete, reset password, reset progress)
 - [x] Email notifications via Resend
+- [x] Quick stats cards (DAU, Completion, Avg Score, 7D Retention)
 
-### Recent Updates
-- [x] Quiz creation date display on user and admin dashboards (Feb 24, 2026)
+### Analytics Dashboard (NEW)
+- [x] Summary metrics API endpoint
+- [x] Detailed analytics API endpoint with 14-day trends
+- [x] Daily Active Users (DAU) tracking and trend chart
+- [x] Quiz completion rate with bar chart
+- [x] Average score trend line chart
+- [x] Category performance horizontal bar chart
+- [x] 3-day and 7-day retention metrics
+- [x] Average score improvement tracking (first vs last quiz)
+- [x] Refresh functionality
+- [x] Activity logging on login and quiz start
 
 ## Database Schema
 
@@ -84,19 +97,22 @@ Design an Online Quiz App (web & mobile friendly) with three criteria:
 }
 ```
 
-### Questions Collection
+### Activity Logs Collection (NEW)
 ```json
 {
   "id": "uuid",
-  "quiz_id": "string",
-  "text": "string",
-  "type": "text|audio|video",
-  "media_url": "string|null",
-  "options": ["string"],
-  "correct_answer": "int",
-  "points": "int"
+  "user_id": "string",
+  "action": "login|quiz_start",
+  "metadata": {},
+  "timestamp": "datetime"
 }
 ```
+
+## API Endpoints
+
+### Analytics Endpoints (NEW)
+- `GET /api/admin/analytics/summary` - Quick stats (DAU, completion rate, avg score, retention)
+- `GET /api/admin/analytics/detailed` - Full analytics with 14-day trends and charts data
 
 ## Test Credentials
 - **User:** demo@quiz.com / demo123
@@ -110,4 +126,5 @@ Design an Online Quiz App (web & mobile friendly) with three criteria:
 - Refactor navigation to use proper React state management instead of window.location.href workaround
 - Add quiz search/filter functionality
 - Add leaderboard feature
-- Add quiz analytics for admins
+- Export analytics data to CSV
+- Add more granular time period selection for analytics
