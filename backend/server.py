@@ -168,6 +168,16 @@ async def get_admin_user(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
+# Helper function to log user activity for analytics
+async def log_activity(user_id: str, action: str, metadata: dict = None):
+    await db.activity_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "action": action,
+        "metadata": metadata or {},
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate):
     existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
@@ -199,6 +209,9 @@ async def login(credentials: UserLogin):
     user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user or not pwd_context.verify(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Log login activity for analytics
+    await log_activity(user["id"], "login")
     
     token = create_token(user["id"], user["email"], user["role"])
     return {"token": token, "user": User(**{k: v for k, v in user.items() if k != "password"})}
@@ -321,6 +334,9 @@ async def get_quiz(quiz_id: str, current_user: User = Depends(get_current_user))
     
     if quiz["level_required"] > current_user.level:
         raise HTTPException(status_code=403, detail="Level requirement not met")
+    
+    # Log quiz start for analytics
+    await log_activity(current_user.id, "quiz_start", {"quiz_id": quiz_id})
     
     questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0, "correct_answer": 0}).to_list(100)
     
@@ -583,7 +599,7 @@ async def reset_user_password(user_id: str, admin: User = Depends(get_admin_user
     except Exception as e:
         logger.error(f"Failed to send email: {str(e)}")
         email_sent = False
-        message = f"Password reset successfully but email failed to send"
+        message = "Password reset successfully but email failed to send"
     
     return {
         "message": message,
@@ -614,6 +630,200 @@ async def reset_user_progress(user_id: str, admin: User = Depends(get_admin_user
     return {
         "message": f"Progress reset successfully for {user['name']}",
         "user_email": user["email"]
+    }
+
+# Analytics Endpoints
+@api_router.get("/admin/analytics/summary")
+async def get_analytics_summary(admin: User = Depends(get_admin_user)):
+    """Get quick summary metrics for admin dashboard"""
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # DAU - count unique users who logged in today (from activity_logs)
+    dau_count = await db.activity_logs.distinct("user_id", {
+        "action": "login",
+        "timestamp": {"$gte": today_start.isoformat()}
+    })
+    dau = len(dau_count)
+    
+    # Total users
+    total_users = await db.users.count_documents({})
+    
+    # Quiz completion rate
+    total_quiz_results = await db.quiz_results.count_documents({})
+    total_quiz_starts = await db.activity_logs.count_documents({"action": "quiz_start"})
+    completion_rate = round((total_quiz_results / max(total_quiz_starts, 1)) * 100, 1)
+    
+    # Average score
+    pipeline = [{"$group": {"_id": None, "avg_score": {"$avg": "$score"}}}]
+    avg_result = await db.quiz_results.aggregate(pipeline).to_list(1)
+    avg_score = round(avg_result[0]["avg_score"], 1) if avg_result else 0
+    
+    # 7-day retention
+    seven_days_ago = now - timedelta(days=7)
+    users_signed_up = await db.users.count_documents({
+        "created_at": {"$lte": seven_days_ago.isoformat()}
+    })
+    
+    if users_signed_up > 0:
+        retained_users = await db.activity_logs.distinct("user_id", {
+            "action": "login",
+            "timestamp": {"$gte": seven_days_ago.isoformat()}
+        })
+        # Filter to only users who signed up before 7 days ago
+        old_users = await db.users.find(
+            {"created_at": {"$lte": seven_days_ago.isoformat()}},
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        old_user_ids = {u["id"] for u in old_users}
+        retained_count = len(set(retained_users) & old_user_ids)
+        retention_7d = round((retained_count / users_signed_up) * 100, 1)
+    else:
+        retention_7d = 0
+    
+    return {
+        "dau": dau,
+        "total_users": total_users,
+        "completion_rate": completion_rate,
+        "avg_score": avg_score,
+        "retention_7d": retention_7d
+    }
+
+@api_router.get("/admin/analytics/detailed")
+async def get_detailed_analytics(admin: User = Depends(get_admin_user)):
+    """Get detailed analytics with historical data for charts"""
+    now = datetime.now(timezone.utc)
+    
+    # DAU for last 14 days
+    dau_data = []
+    for i in range(13, -1, -1):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        
+        unique_users = await db.activity_logs.distinct("user_id", {
+            "action": "login",
+            "timestamp": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
+        })
+        
+        dau_data.append({
+            "date": day_start.strftime("%b %d"),
+            "users": len(unique_users)
+        })
+    
+    # Quiz completions per day (last 14 days)
+    completion_data = []
+    for i in range(13, -1, -1):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        
+        completions = await db.quiz_results.count_documents({
+            "completed_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
+        })
+        
+        completion_data.append({
+            "date": day_start.strftime("%b %d"),
+            "completions": completions
+        })
+    
+    # Average score trend (last 14 days)
+    score_data = []
+    for i in range(13, -1, -1):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        
+        pipeline = [
+            {"$match": {"completed_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}}},
+            {"$group": {"_id": None, "avg_score": {"$avg": "$score"}}}
+        ]
+        result = await db.quiz_results.aggregate(pipeline).to_list(1)
+        avg = round(result[0]["avg_score"], 1) if result else 0
+        
+        score_data.append({
+            "date": day_start.strftime("%b %d"),
+            "avgScore": avg
+        })
+    
+    # Retention data (3-day and 7-day)
+    three_days_ago = now - timedelta(days=3)
+    seven_days_ago = now - timedelta(days=7)
+    
+    # Users who signed up more than 3 days ago
+    users_3d = await db.users.find(
+        {"created_at": {"$lte": three_days_ago.isoformat()}},
+        {"_id": 0, "id": 1}
+    ).to_list(1000)
+    users_3d_ids = {u["id"] for u in users_3d}
+    
+    # Users who signed up more than 7 days ago
+    users_7d = await db.users.find(
+        {"created_at": {"$lte": seven_days_ago.isoformat()}},
+        {"_id": 0, "id": 1}
+    ).to_list(1000)
+    users_7d_ids = {u["id"] for u in users_7d}
+    
+    # Active in last 3 days
+    active_3d = await db.activity_logs.distinct("user_id", {
+        "action": "login",
+        "timestamp": {"$gte": three_days_ago.isoformat()}
+    })
+    
+    # Active in last 7 days
+    active_7d = await db.activity_logs.distinct("user_id", {
+        "action": "login",
+        "timestamp": {"$gte": seven_days_ago.isoformat()}
+    })
+    
+    retention_3d = round((len(set(active_3d) & users_3d_ids) / max(len(users_3d_ids), 1)) * 100, 1)
+    retention_7d = round((len(set(active_7d) & users_7d_ids) / max(len(users_7d_ids), 1)) * 100, 1)
+    
+    # Score improvement - compare first vs last quiz for each user
+    improvement_pipeline = [
+        {"$sort": {"completed_at": 1}},
+        {"$group": {
+            "_id": "$user_id",
+            "first_score": {"$first": "$score"},
+            "last_score": {"$last": "$score"},
+            "count": {"$sum": 1}
+        }},
+        {"$match": {"count": {"$gte": 2}}},
+        {"$project": {
+            "improvement": {"$subtract": ["$last_score", "$first_score"]}
+        }}
+    ]
+    improvements = await db.quiz_results.aggregate(improvement_pipeline).to_list(1000)
+    avg_improvement = round(sum(i["improvement"] for i in improvements) / max(len(improvements), 1), 1)
+    
+    # Category performance
+    category_pipeline = [
+        {"$lookup": {
+            "from": "quizzes",
+            "localField": "quiz_id",
+            "foreignField": "id",
+            "as": "quiz"
+        }},
+        {"$unwind": "$quiz"},
+        {"$group": {
+            "_id": "$quiz.category",
+            "avgScore": {"$avg": "$score"},
+            "count": {"$sum": 1}
+        }}
+    ]
+    category_stats = await db.quiz_results.aggregate(category_pipeline).to_list(100)
+    category_data = [
+        {"category": c["_id"], "avgScore": round(c["avgScore"], 1), "attempts": c["count"]}
+        for c in category_stats
+    ]
+    
+    return {
+        "dau_trend": dau_data,
+        "completion_trend": completion_data,
+        "score_trend": score_data,
+        "retention": {"day3": retention_3d, "day7": retention_7d},
+        "avg_improvement": avg_improvement,
+        "category_performance": category_data
     }
 
 app.include_router(api_router)

@@ -11,6 +11,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CreateQuiz from './pages/admin/CreateQuiz';
 import ManageQuestions from './pages/admin/ManageQuestions';
 import UserManagement from './pages/admin/UserManagement';
+import Analytics from './pages/admin/Analytics';
 import './App.css';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/admin/quiz/create" element={token && user?.role === 'admin' ? <CreateQuiz /> : <Navigate to="/login" />} />
           <Route path="/admin/quiz/:id/questions" element={token && user?.role === 'admin' ? <ManageQuestions /> : <Navigate to="/login" />} />
           <Route path="/admin/users" element={token && user?.role === 'admin' ? <UserManagement /> : <Navigate to="/login" />} />
+          <Route path="/admin/analytics" element={token && user?.role === 'admin' ? <Analytics /> : <Navigate to="/login" />} />
           
           <Route path="/" element={<Navigate to={token ? "/dashboard" : "/login"} />} />
         </Routes>
