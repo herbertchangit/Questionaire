@@ -4,9 +4,19 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
-import { ArrowLeft, Clock, Star, CheckCircle, Calendar } from 'lucide-react';
+import { ArrowLeft, Clock, Star, CheckCircle, Calendar, BookOpen } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+const SUBJECT_LABELS = {
+  en: { subj_bm: 'BM', subj_history: 'History', subj_science: 'Science' },
+  zh: { subj_bm: '马来语', subj_history: '历史', subj_science: '科学' }
+};
+const SUBJECT_COLORS = {
+  subj_bm: 'bg-violet-100 text-violet-700',
+  subj_history: 'bg-amber-100 text-amber-700',
+  subj_science: 'bg-emerald-100 text-emerald-700'
+};
 
 function History() {
   const [history, setHistory] = useState([]);
@@ -136,10 +146,10 @@ function History() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 text-sm text-zinc-500">
+                  <div className="flex items-center gap-4 text-sm text-zinc-500 mb-2">
                     <div className="flex items-center gap-1">
                       <CheckCircle className="w-4 h-4" />
-                      <span>{item.score}/{item.total}</span>
+                      <span data-testid={`history-score-${index}`}>{item.score}/{item.total}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500" />
@@ -154,6 +164,22 @@ function History() {
                       <span>{formatDate(item.completed_at)}</span>
                     </div>
                   </div>
+                  
+                  {/* Subject breakdown */}
+                  {item.subject_breakdown && Object.keys(item.subject_breakdown).length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-zinc-100">
+                      <BookOpen className="w-4 h-4 text-zinc-400" />
+                      {Object.entries(item.subject_breakdown).map(([sid, b]) => (
+                        <span
+                          key={sid}
+                          data-testid={`history-subject-${sid}-${index}`}
+                          className={`text-xs font-bold px-2 py-0.5 rounded-md ${SUBJECT_COLORS[sid] || 'bg-zinc-100 text-zinc-600'}`}
+                        >
+                          {SUBJECT_LABELS[language]?.[sid] || sid}: {b.correct}/{b.total}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               );
             })}

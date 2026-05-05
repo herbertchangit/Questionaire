@@ -38,21 +38,37 @@ logger = logging.getLogger(__name__)
 
 # ==================== MODELS ====================
 
+class LatestMarks(BaseModel):
+    bm: int = Field(ge=0, le=100, default=0)
+    sejarah: int = Field(ge=0, le=100, default=0)
+    science: int = Field(ge=0, le=100, default=0)
+
 class UserCreate(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
+    username: str = Field(min_length=3, max_length=30)
+    password: str = Field(min_length=6, max_length=100)
+    full_name: str = Field(min_length=2, max_length=100)
+    school_name: str = Field(min_length=2, max_length=200)
+    town: str = Field(min_length=2, max_length=100)
+    current_grade: int = Field(ge=1, le=6)  # Form 1-6
+    date_of_birth: str  # YYYY-MM-DD format
+    latest_marks: LatestMarks
     language: str = "en"
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    username: str
     password: str
+    remember_me: bool = False
 
 class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    name: str
-    email: str
+    username: str
+    full_name: str
+    school_name: str
+    town: str
+    current_grade: int
+    date_of_birth: str
+    latest_marks: Dict[str, int] = {}
     role: str = "user"
     language: str = "en"
     total_points: int = 0
@@ -61,6 +77,13 @@ class User(BaseModel):
     total_time_spent: int = 0
     quizzes_completed: int = 0
     created_at: str
+
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    school_name: Optional[str] = None
+    town: Optional[str] = None
+    current_grade: Optional[int] = None
+    latest_marks: Optional[LatestMarks] = None
 
 class PasswordChange(BaseModel):
     current_password: str
@@ -93,9 +116,11 @@ class NoticeCreate(BaseModel):
 
 # ==================== AUTH HELPERS ====================
 
-def create_token(user_id: str, email: str, role: str) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
-    payload = {"user_id": user_id, "email": email, "role": role, "exp": exp}
+def create_token(user_id: str, username: str, role: str, remember_me: bool = False) -> str:
+    # If remember_me, token lasts 30 days; otherwise 24 hours
+    hours = 720 if remember_me else 24
+    exp = datetime.now(timezone.utc) + timedelta(hours=hours)
+    payload = {"user_id": user_id, "username": username, "role": role, "exp": exp}
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -132,18 +157,51 @@ async def log_activity(user_id: str, action: str, metadata: dict = None):
 
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate):
-    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    # Validate username format (alphanumeric and underscore only)
+    import re
+    if not re.match(r'^[a-zA-Z0-9_]+$', user_data.username):
+        raise HTTPException(
+            status_code=400, 
+            detail="Username can only contain letters, numbers, and underscores"
+        )
+    
+    # Check if username already exists
+    existing_username = await db.users.find_one({"username": user_data.username.lower()}, {"_id": 0})
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Validate date of birth format
+    try:
+        dob = datetime.strptime(user_data.date_of_birth, "%Y-%m-%d")
+        # Check if user is between 10-20 years old (typical secondary school age)
+        age = (datetime.now() - dob).days // 365
+        if age < 10 or age > 20:
+            raise HTTPException(status_code=400, detail="Age must be between 10-20 years for secondary school")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    # Validate marks
+    marks = user_data.latest_marks
+    if not (0 <= marks.bm <= 100 and 0 <= marks.sejarah <= 100 and 0 <= marks.science <= 100):
+        raise HTTPException(status_code=400, detail="Marks must be between 0 and 100")
     
     user_id = str(uuid.uuid4())
     hashed_password = pwd_context.hash(user_data.password)
     
     user_doc = {
         "id": user_id,
-        "name": user_data.name,
-        "email": user_data.email,
+        "username": user_data.username.lower(),
         "password": hashed_password,
+        "full_name": user_data.full_name,
+        "school_name": user_data.school_name,
+        "town": user_data.town,
+        "current_grade": user_data.current_grade,
+        "date_of_birth": user_data.date_of_birth,
+        "latest_marks": {
+            "bm": marks.bm,
+            "sejarah": marks.sejarah,
+            "science": marks.science
+        },
         "role": "user",
         "language": user_data.language,
         "total_points": 0,
@@ -155,22 +213,33 @@ async def register(user_data: UserCreate):
     }
     
     await db.users.insert_one(user_doc)
-    token = create_token(user_id, user_data.email, "user")
+    token = create_token(user_id, user_data.username.lower(), "user", False)
     
     user_response = {k: v for k, v in user_doc.items() if k != "password"}
-    return {"token": token, "user": user_response}
+    return {"token": token, "user": user_response, "message": "Registration successful"}
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
-    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
-    if not user or not pwd_context.verify(credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Find user by username (case-insensitive)
+    user = await db.users.find_one({"username": credentials.username.lower()}, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    if not pwd_context.verify(credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
     
     await log_activity(user["id"], "login")
     
-    token = create_token(user["id"], user["email"], user["role"])
+    token = create_token(user["id"], user["username"], user["role"], credentials.remember_me)
     user_response = {k: v for k, v in user.items() if k != "password"}
-    return {"token": token, "user": user_response}
+    
+    return {
+        "token": token, 
+        "user": user_response,
+        "message": "Login successful",
+        "remember_me": credentials.remember_me
+    }
 
 @api_router.get("/auth/me")
 async def get_me(current_user: User = Depends(get_current_user)):
@@ -190,18 +259,49 @@ async def update_language(data: LanguageUpdate, current_user: User = Depends(get
     return {"message": "Language updated", "language": data.language}
 
 @api_router.put("/user/profile")
-async def update_profile(name: str, current_user: User = Depends(get_current_user)):
-    await db.users.update_one(
-        {"id": current_user.id},
-        {"$set": {"name": name}}
-    )
-    return {"message": "Profile updated"}
+async def update_profile(profile_data: UserProfileUpdate, current_user: User = Depends(get_current_user)):
+    update_fields = {}
+    
+    if profile_data.full_name:
+        update_fields["full_name"] = profile_data.full_name
+    if profile_data.school_name:
+        update_fields["school_name"] = profile_data.school_name
+    if profile_data.town:
+        update_fields["town"] = profile_data.town
+    if profile_data.current_grade:
+        if not (1 <= profile_data.current_grade <= 6):
+            raise HTTPException(status_code=400, detail="Grade must be between 1 and 6")
+        update_fields["current_grade"] = profile_data.current_grade
+    if profile_data.latest_marks:
+        marks = profile_data.latest_marks
+        update_fields["latest_marks"] = {
+            "bm": marks.bm,
+            "sejarah": marks.sejarah,
+            "science": marks.science
+        }
+    
+    if update_fields:
+        await db.users.update_one(
+            {"id": current_user.id},
+            {"$set": update_fields}
+        )
+    
+    return {"message": "Profile updated successfully"}
+
+@api_router.get("/user/profile")
+async def get_profile(current_user: User = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password": 0})
+    return user
 
 @api_router.post("/user/change-password")
 async def change_password(data: PasswordChange, current_user: User = Depends(get_current_user)):
     user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
     if not pwd_context.verify(data.current_password, user["password"]):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
     
     await db.users.update_one(
         {"id": current_user.id},
@@ -426,10 +526,33 @@ async def get_quiz_history(
     
     history = await db.quiz_history.find(
         query,
-        {"_id": 0, "results": 0}
+        {"_id": 0}
     ).sort("completed_at", -1).limit(limit).to_list(limit)
     
-    return history
+    # Enrich each history item with subject breakdown
+    for item in history:
+        results = item.get("results", [])
+        # Build map of question_id -> subject_id for this stage
+        if results:
+            q_ids = [r["question_id"] for r in results]
+            q_docs = await db.edu_questions.find(
+                {"id": {"$in": q_ids}},
+                {"_id": 0, "id": 1, "subject_id": 1}
+            ).to_list(100)
+            qmap = {q["id"]: q.get("subject_id") for q in q_docs}
+            
+            breakdown = {}  # subject_id -> {correct, total}
+            for r in results:
+                sid = qmap.get(r["question_id"], "unknown")
+                b = breakdown.setdefault(sid, {"correct": 0, "total": 0})
+                b["total"] += 1
+                if r.get("is_correct"):
+                    b["correct"] += 1
+            item["subject_breakdown"] = breakdown
+        else:
+            item["subject_breakdown"] = {}
+        # Remove heavy results array from response
+        item.pop("results", None)
     
     return history
 
@@ -699,6 +822,11 @@ async def get_admin_reports(admin: User = Depends(get_admin_user)):
 # ==================== APP SETUP ====================
 
 app.include_router(api_router)
+
+# LIVE Competition module
+from live_competition import live_router, init_live_module
+init_live_module(db)
+app.include_router(live_router)
 
 app.add_middleware(
     CORSMiddleware,

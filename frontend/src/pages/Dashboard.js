@@ -167,7 +167,7 @@ function Dashboard() {
           className="mb-8"
         >
           <h1 className="text-3xl md:text-4xl font-black text-zinc-900 mb-2" data-testid="welcome-title">
-            {t('welcome_back')}, {user?.name}! 👋
+            {t('welcome_back')}, {user?.full_name || user?.username}! 👋
           </h1>
           {welcomeMsg && (
             <p className="text-zinc-600 font-medium">
@@ -342,7 +342,7 @@ function Dashboard() {
             data-testid="live-btn"
           >
             <TrendingUp className="w-6 h-6" />
-            <span>LIVE Competition ({language === 'zh' ? '即将推出' : 'Coming Soon'})</span>
+            <span>{language === 'zh' ? '实时竞赛' : 'LIVE Competition'}</span>
           </motion.button>
         </div>
       </main>

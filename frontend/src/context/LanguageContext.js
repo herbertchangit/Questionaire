@@ -120,7 +120,17 @@ const translations = {
     minutes: "minutes",
     seconds: "seconds",
     of: "of",
-    hours: "hours"
+    hours: "hours",
+    
+    // Live
+    live_competition: "LIVE Competition",
+    host_room: "Host Room",
+    join_by_code: "Join by Code",
+    quick_match: "Quick Match",
+    tournaments_label: "Tournaments",
+    room_code: "Room Code",
+    create_room: "Create Room",
+    start_game: "Start Game"
   },
   zh: {
     // Common
@@ -241,7 +251,17 @@ const translations = {
     minutes: "分钟",
     seconds: "秒",
     of: "/",
-    hours: "小时"
+    hours: "小时",
+    
+    // Live
+    live_competition: "实时竞赛",
+    host_room: "创建房间",
+    join_by_code: "输入代码",
+    quick_match: "快速匹配",
+    tournaments_label: "锦标赛",
+    room_code: "房间代码",
+    create_room: "创建房间",
+    start_game: "开始游戏"
   }
 };
 

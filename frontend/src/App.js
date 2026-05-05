@@ -16,6 +16,8 @@ import Leaderboard from './pages/Leaderboard';
 import History from './pages/History';
 import Settings from './pages/Settings';
 import Notices from './pages/Notices';
+import LiveLobby from './pages/LiveLobby';
+import LiveRoom from './pages/LiveRoom';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -23,6 +25,7 @@ import ManageQuestions from './pages/admin/ManageQuestions';
 import ManageNotices from './pages/admin/ManageNotices';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminReports from './pages/admin/AdminReports';
+import AdminTournaments from './pages/admin/AdminTournaments';
 
 import './App.css';
 
@@ -48,6 +51,8 @@ function App() {
             <Route path="/history" element={token ? <History /> : <Navigate to="/login" />} />
             <Route path="/settings" element={token ? <Settings /> : <Navigate to="/login" />} />
             <Route path="/notices" element={token ? <Notices /> : <Navigate to="/login" />} />
+            <Route path="/live" element={token ? <LiveLobby /> : <Navigate to="/login" />} />
+            <Route path="/live/room/:code" element={token ? <LiveRoom /> : <Navigate to="/login" />} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={token && user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
@@ -55,6 +60,7 @@ function App() {
             <Route path="/admin/notices" element={token && user?.role === 'admin' ? <ManageNotices /> : <Navigate to="/login" />} />
             <Route path="/admin/users" element={token && user?.role === 'admin' ? <AdminUsers /> : <Navigate to="/login" />} />
             <Route path="/admin/reports" element={token && user?.role === 'admin' ? <AdminReports /> : <Navigate to="/login" />} />
+            <Route path="/admin/tournaments" element={token && user?.role === 'admin' ? <AdminTournaments /> : <Navigate to="/login" />} />
             
             {/* Default Route */}
             <Route path="/" element={<Navigate to={token ? "/dashboard" : "/login"} />} />

@@ -1,40 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
-import { Mail, Lock, LogIn, Globe, Award } from 'lucide-react';
+import { User, Lock, LogIn, Globe, Award, Eye, EyeOff } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const { language, toggleLanguage, t } = useLanguage();
 
+  // Load saved username if remember me was checked
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('rememberedUsername');
+    if (savedUsername) {
+      setUsername(savedUsername);
+      setRememberMe(true);
+    }
+  }, []);
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!username.trim()) {
+      newErrors.username = language === 'zh' ? '请输入用户名' : 'Username is required';
+    } else if (username.length < 3) {
+      newErrors.username = language === 'zh' ? '用户名至少3个字符' : 'Username must be at least 3 characters';
+    }
+    
+    if (!password) {
+      newErrors.password = language === 'zh' ? '请输入密码' : 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = language === 'zh' ? '密码至少6个字符' : 'Password must be at least 6 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setLoading(true);
+    setErrors({});
 
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, {
-        email,
-        password
+        username: username.toLowerCase(),
+        password,
+        remember_me: rememberMe
       });
+      
+      // Save or clear remembered username
+      if (rememberMe) {
+        localStorage.setItem('rememberedUsername', username.toLowerCase());
+      } else {
+        localStorage.removeItem('rememberedUsername');
+      }
       
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
-      toast.success(language === 'zh' ? '登录成功!' : 'Login successful!');
+      toast.success(response.data.message || (language === 'zh' ? '登录成功!' : 'Login successful!'));
       
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 500);
     } catch (error) {
-      toast.error(error.response?.data?.detail || (language === 'zh' ? '登录失败' : 'Login failed'));
+      const errorMsg = error.response?.data?.detail || (language === 'zh' ? '登录失败' : 'Login failed');
+      setErrors({ form: errorMsg });
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -73,23 +118,33 @@ function Login() {
           <h2 className="text-2xl font-black text-zinc-900 mb-2">{t('login_title')}</h2>
           <p className="text-zinc-500 mb-6">{t('login_subtitle')}</p>
 
+          {errors.form && (
+            <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-sm font-medium">
+              {errors.form}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-zinc-700 mb-2">
-                {t('email')}
+                {language === 'zh' ? '用户名' : 'Username'}
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-zinc-200 focus:border-violet-500 focus:outline-none font-medium"
-                  placeholder="you@example.com"
-                  required
-                  data-testid="email-input"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 focus:outline-none font-medium ${
+                    errors.username ? 'border-red-300 focus:border-red-500' : 'border-zinc-200 focus:border-violet-500'
+                  }`}
+                  placeholder={language === 'zh' ? '输入用户名' : 'Enter username'}
+                  data-testid="username-input"
                 />
               </div>
+              {errors.username && (
+                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+              )}
             </div>
 
             <div>
@@ -99,15 +154,41 @@ function Login() {
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-zinc-200 focus:border-violet-500 focus:outline-none font-medium"
+                  className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 focus:outline-none font-medium ${
+                    errors.password ? 'border-red-300 focus:border-red-500' : 'border-zinc-200 focus:border-violet-500'
+                  }`}
                   placeholder="••••••••"
-                  required
                   data-testid="password-input"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Remember Me */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-300 text-violet-500 focus:ring-violet-500"
+                data-testid="remember-me"
+              />
+              <label htmlFor="rememberMe" className="text-sm font-medium text-zinc-600 cursor-pointer">
+                {language === 'zh' ? '记住我' : 'Remember me'}
+              </label>
             </div>
 
             <button
@@ -138,8 +219,8 @@ function Login() {
         {/* Demo Credentials */}
         <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4 text-white/80 text-sm">
           <p className="font-bold mb-2">{language === 'zh' ? '演示账户:' : 'Demo Accounts:'}</p>
-          <p>User: demo@quiz.com / demo123</p>
-          <p>Admin: admin@quiz.com / admin123</p>
+          <p>User: demo / demo123</p>
+          <p>Admin: admin / admin123</p>
         </div>
       </motion.div>
     </div>

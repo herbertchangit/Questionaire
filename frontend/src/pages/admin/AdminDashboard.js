@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   ArrowLeft, Crown, FileQuestion, Users, Bell, BarChart3, 
-  BookOpen, Landmark, FlaskConical
+  BookOpen, Landmark, FlaskConical, Trophy
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -63,6 +63,13 @@ function AdminDashboard() {
       desc: language === 'zh' ? '查看详细分析' : 'View detailed analytics',
       path: '/admin/reports',
       color: 'green'
+    },
+    { 
+      icon: Trophy, 
+      title: language === 'zh' ? '锦标赛' : 'Tournaments',
+      desc: language === 'zh' ? '安排实时锦标赛' : 'Schedule live tournaments',
+      path: '/admin/tournaments',
+      color: 'yellow'
     }
   ];
 
