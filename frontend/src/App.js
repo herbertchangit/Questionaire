@@ -9,7 +9,6 @@ import Register from './pages/Register';
 
 // Main Pages
 import Dashboard from './pages/Dashboard';
-import SubjectPage from './pages/SubjectPage';
 import LevelPage from './pages/LevelPage';
 import PlayPage from './pages/PlayPage';
 import ResultsPage from './pages/ResultsPage';
@@ -42,8 +41,7 @@ function App() {
             
             {/* Main Routes */}
             <Route path="/dashboard" element={token ? <Dashboard /> : <Navigate to="/login" />} />
-            <Route path="/subject/:subjectId" element={token ? <SubjectPage /> : <Navigate to="/login" />} />
-            <Route path="/subject/:subjectId/level/:levelNum" element={token ? <LevelPage /> : <Navigate to="/login" />} />
+            <Route path="/level/:levelNum" element={token ? <LevelPage /> : <Navigate to="/login" />} />
             <Route path="/play/:stageId" element={token ? <PlayPage /> : <Navigate to="/login" />} />
             <Route path="/results/:stageId" element={token ? <ResultsPage /> : <Navigate to="/login" />} />
             <Route path="/leaderboard" element={token ? <Leaderboard /> : <Navigate to="/login" />} />

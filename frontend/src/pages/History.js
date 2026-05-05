@@ -53,13 +53,12 @@ function History() {
     return `${mins}m ${secs}s`;
   };
 
-  const getSubjectName = (subjectId) => {
+  const getLevelName = (levelNum) => {
     const names = {
-      'subj_bm': { en: 'Bahasa Malaysia', zh: '马来语' },
-      'subj_history': { en: 'History', zh: '历史' },
-      'subj_science': { en: 'Science', zh: '科学' }
+      en: { 1: 'Determination', 2: 'Discipline', 3: 'Perseverance', 4: 'Hard-working', 5: 'Breakthrough' },
+      zh: { 1: '决心', 2: '自律', 3: '毅力', 4: '勤劳', 5: '突破' }
     };
-    return names[subjectId]?.[language] || subjectId;
+    return names[language][levelNum] || `Level ${levelNum}`;
   };
 
   if (loading) {
@@ -118,10 +117,10 @@ function History() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <span className="text-sm font-bold text-violet-600">
-                        {getSubjectName(item.subject_id)}
+                        {getLevelName(item.level_num)}
                       </span>
                       <h3 className="font-bold text-zinc-900">
-                        Level {item.level_num} - Stage {item.stage_num}
+                        Stage {item.stage_num}
                       </h3>
                     </div>
                     <div className={`

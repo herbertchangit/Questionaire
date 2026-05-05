@@ -57,7 +57,7 @@ class User(BaseModel):
     language: str = "en"
     total_points: int = 0
     current_level: int = 1
-    subject_progress: Dict[str, Any] = {}
+    stages_completed: List[str] = []
     total_time_spent: int = 0
     quizzes_completed: int = 0
     created_at: str
@@ -148,11 +148,7 @@ async def register(user_data: UserCreate):
         "language": user_data.language,
         "total_points": 0,
         "current_level": 1,
-        "subject_progress": {
-            "subj_bm": {"current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []},
-            "subj_history": {"current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []},
-            "subj_science": {"current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []}
-        },
+        "stages_completed": [],
         "total_time_spent": 0,
         "quizzes_completed": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -234,40 +230,35 @@ async def get_subjects(current_user: User = Depends(get_current_user)):
 @api_router.get("/levels")
 async def get_levels(current_user: User = Depends(get_current_user)):
     levels = await db.levels.find({}, {"_id": 0}).sort("level_num", 1).to_list(100)
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    stages_completed = user.get("stages_completed", [])
     
-    # Check which levels are unlocked for user
+    # Check which levels are unlocked and count completed stages
     for level in levels:
         level["is_unlocked"] = current_user.total_points >= level["unlock_points"]
+        # Count completed stages for this level
+        level_stages = [s for s in stages_completed if f"level_{level['level_num']}_" in s]
+        level["stages_completed"] = len(level_stages)
     
     return levels
 
-@api_router.get("/subjects/{subject_id}/levels")
-async def get_subject_levels(subject_id: str, current_user: User = Depends(get_current_user)):
-    subject = await db.subjects.find_one({"id": subject_id}, {"_id": 0})
-    if not subject:
-        raise HTTPException(status_code=404, detail="Subject not found")
+@api_router.get("/levels/{level_num}/stages")
+async def get_level_stages(level_num: int, current_user: User = Depends(get_current_user)):
+    # Check if level is unlocked
+    level = await db.levels.find_one({"level_num": level_num}, {"_id": 0})
+    if not level:
+        raise HTTPException(status_code=404, detail="Level not found")
     
-    levels = await db.levels.find({}, {"_id": 0}).sort("level_num", 1).to_list(100)
-    user_progress = current_user.subject_progress.get(subject_id, {})
-    stages_completed = user_progress.get("stages_completed", [])
+    if current_user.total_points < level["unlock_points"]:
+        raise HTTPException(status_code=403, detail="Level not unlocked yet")
     
-    for level in levels:
-        level["is_unlocked"] = current_user.total_points >= level["unlock_points"]
-        # Count completed stages for this level in this subject
-        level_stages = [s for s in stages_completed if f"level_{level['level_num']}" in s]
-        level["stages_completed"] = len(level_stages)
-    
-    return {"subject": subject, "levels": levels}
-
-@api_router.get("/subjects/{subject_id}/levels/{level_num}/stages")
-async def get_level_stages(subject_id: str, level_num: int, current_user: User = Depends(get_current_user)):
     stages = await db.stages.find(
-        {"subject_id": subject_id, "level_num": level_num},
+        {"level_num": level_num},
         {"_id": 0}
     ).sort("stage_num", 1).to_list(100)
     
-    user_progress = current_user.subject_progress.get(subject_id, {})
-    stages_completed = user_progress.get("stages_completed", [])
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    stages_completed = user.get("stages_completed", [])
     
     for stage in stages:
         stage["is_completed"] = stage["id"] in stages_completed
@@ -275,10 +266,10 @@ async def get_level_stages(subject_id: str, level_num: int, current_user: User =
         if stage["stage_num"] == 1:
             stage["is_unlocked"] = True
         else:
-            prev_stage_id = f"stage_{subject_id}_level_{level_num}_{stage['stage_num'] - 1}"
+            prev_stage_id = f"stage_level_{level_num}_{stage['stage_num'] - 1}"
             stage["is_unlocked"] = prev_stage_id in stages_completed
     
-    return stages
+    return {"level": level, "stages": stages}
 
 # ==================== QUIZ GAMEPLAY ====================
 
@@ -288,9 +279,9 @@ async def start_stage(stage_id: str, current_user: User = Depends(get_current_us
     if not stage:
         raise HTTPException(status_code=404, detail="Stage not found")
     
-    # Get questions for this stage
+    # Get questions for this stage (mixed subjects)
     questions = await db.edu_questions.find(
-        {"subject_id": stage["subject_id"], "level_num": stage["level_num"], "stage_num": stage["stage_num"]},
+        {"level_num": stage["level_num"], "stage_num": stage["stage_num"]},
         {"_id": 0, "correct_answer": 0}
     ).to_list(100)
     
@@ -310,7 +301,7 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
     
     # Get questions with answers
     questions = await db.edu_questions.find(
-        {"subject_id": stage["subject_id"], "level_num": stage["level_num"], "stage_num": stage["stage_num"]},
+        {"level_num": stage["level_num"], "stage_num": stage["stage_num"]},
         {"_id": 0}
     ).to_list(100)
     
@@ -336,7 +327,6 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
     history_doc = {
         "id": str(uuid.uuid4()),
         "user_id": current_user.id,
-        "subject_id": stage["subject_id"],
         "level_num": stage["level_num"],
         "stage_num": stage["stage_num"],
         "stage_id": stage_id,
@@ -349,22 +339,11 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
     }
     await db.quiz_history.insert_one(history_doc)
     
-    # Update user progress
-    subject_id = stage["subject_id"]
-    user_progress = current_user.subject_progress.get(subject_id, {
-        "current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []
-    })
-    
-    stages_completed = user_progress.get("stages_completed", [])
+    # Update user progress (simplified - no subject_progress)
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    stages_completed = user.get("stages_completed", [])
     if stage_id not in stages_completed:
         stages_completed.append(stage_id)
-    
-    # Calculate new level/stage
-    new_current_stage = stage["stage_num"] + 1 if stage["stage_num"] < 5 else 1
-    new_current_level = stage["level_num"] + 1 if new_current_stage == 1 and stage["stage_num"] == 5 else stage["level_num"]
-    if new_current_level > 5:
-        new_current_level = 5
-        new_current_stage = 5
     
     await db.users.update_one(
         {"id": current_user.id},
@@ -375,12 +354,7 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
                 "quizzes_completed": 1
             },
             "$set": {
-                f"subject_progress.{subject_id}.current_level": new_current_level,
-                f"subject_progress.{subject_id}.current_stage": new_current_stage,
-                f"subject_progress.{subject_id}.stages_completed": stages_completed,
-            },
-            "$inc": {
-                f"subject_progress.{subject_id}.total_points": total_points
+                "stages_completed": stages_completed
             }
         }
     )
@@ -415,27 +389,21 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
 async def get_progress_stats(current_user: User = Depends(get_current_user)):
     # Get fresh user data
     user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password": 0})
+    stages_completed = user.get("stages_completed", [])
     
-    # Get subject details
-    subjects = await db.subjects.find({}, {"_id": 0}).to_list(100)
+    # Calculate completion percentage (25 total stages: 5 levels x 5 stages)
+    total_stages = 25
+    completion_pct = round((len(stages_completed) / total_stages) * 100, 1)
     
-    subject_stats = []
-    for subject in subjects:
-        progress = user.get("subject_progress", {}).get(subject["id"], {})
-        stages_completed = progress.get("stages_completed", [])
-        
-        # Calculate completion percentage (25 total stages per subject: 5 levels x 5 stages)
-        total_stages = 25
-        completion_pct = round((len(stages_completed) / total_stages) * 100, 1)
-        
-        subject_stats.append({
-            "subject": subject,
-            "current_level": progress.get("current_level", 1),
-            "current_stage": progress.get("current_stage", 1),
-            "total_points": progress.get("total_points", 0),
-            "stages_completed": len(stages_completed),
-            "total_stages": total_stages,
-            "completion_percentage": completion_pct
+    # Get level progress
+    levels = await db.levels.find({}, {"_id": 0}).sort("level_num", 1).to_list(100)
+    level_stats = []
+    for level in levels:
+        level_stages = [s for s in stages_completed if f"level_{level['level_num']}_" in s]
+        level_stats.append({
+            "level": level,
+            "stages_completed": len(level_stages),
+            "is_unlocked": user.get("total_points", 0) >= level["unlock_points"]
         })
     
     return {
@@ -443,23 +411,25 @@ async def get_progress_stats(current_user: User = Depends(get_current_user)):
         "current_level": user.get("current_level", 1),
         "total_time_spent": user.get("total_time_spent", 0),
         "quizzes_completed": user.get("quizzes_completed", 0),
-        "subject_stats": subject_stats
+        "stages_completed": len(stages_completed),
+        "total_stages": total_stages,
+        "completion_percentage": completion_pct,
+        "level_stats": level_stats
     }
 
 @api_router.get("/progress/history")
 async def get_quiz_history(
-    subject_id: Optional[str] = None,
     limit: int = 20,
     current_user: User = Depends(get_current_user)
 ):
     query = {"user_id": current_user.id}
-    if subject_id:
-        query["subject_id"] = subject_id
     
     history = await db.quiz_history.find(
         query,
         {"_id": 0, "results": 0}
     ).sort("completed_at", -1).limit(limit).to_list(limit)
+    
+    return history
     
     return history
 

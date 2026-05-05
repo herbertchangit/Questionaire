@@ -4,12 +4,26 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
-import { ArrowLeft, Lock, CheckCircle, Play, Star } from 'lucide-react';
+import { ArrowLeft, Lock, CheckCircle, Play, Star, Flame, Target, Mountain, Hammer, Rocket } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+const levelIcons = {
+  'flame': Flame,
+  'target': Target,
+  'mountain': Mountain,
+  'hammer': Hammer,
+  'rocket': Rocket
+};
+
+const levelNames = {
+  en: { 1: 'Determination', 2: 'Discipline', 3: 'Perseverance', 4: 'Hard-working', 5: 'Breakthrough' },
+  zh: { 1: '决心', 2: '自律', 3: '毅力', 4: '勤劳', 5: '突破' }
+};
+
 function LevelPage() {
-  const { subjectId, levelNum } = useParams();
+  const { levelNum } = useParams();
+  const [level, setLevel] = useState(null);
   const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -17,7 +31,7 @@ function LevelPage() {
 
   useEffect(() => {
     fetchStages();
-  }, [subjectId, levelNum]);
+  }, [levelNum]);
 
   const fetchStages = async () => {
     const token = localStorage.getItem('token');
@@ -28,13 +42,18 @@ function LevelPage() {
 
     try {
       const response = await axios.get(
-        `${API_URL}/api/subjects/${subjectId}/levels/${levelNum}/stages`,
+        `${API_URL}/api/levels/${levelNum}/stages`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setStages(response.data);
+      setLevel(response.data.level);
+      setStages(response.data.stages);
     } catch (error) {
-      toast.error('Failed to load stages');
-      navigate(`/subject/${subjectId}`);
+      if (error.response?.status === 403) {
+        toast.error(language === 'zh' ? '等级未解锁' : 'Level not unlocked yet');
+      } else {
+        toast.error('Failed to load stages');
+      }
+      navigate('/dashboard');
     } finally {
       setLoading(false);
     }
@@ -48,13 +67,18 @@ function LevelPage() {
     );
   }
 
+  const Icon = levelIcons[level?.icon] || Flame;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50" data-testid="level-page">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b-2 border-zinc-200 py-6 px-4">
+      <header 
+        className="py-8 px-4"
+        style={{ backgroundColor: `${level?.color}15` }}
+      >
         <div className="max-w-4xl mx-auto">
           <button
-            onClick={() => navigate(`/subject/${subjectId}`)}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 mb-4 font-medium"
             data-testid="back-btn"
           >
@@ -62,14 +86,35 @@ function LevelPage() {
             {t('back')}
           </button>
           
-          <h1 className="text-3xl font-black text-zinc-900" data-testid="level-title">
-            {t('level')} {levelNum} - {t('stages')}
-          </h1>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-4"
+          >
+            <div 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: `${level?.color}20` }}
+            >
+              <Icon className="w-10 h-10" style={{ color: level?.color }} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-zinc-500">{t('level')} {levelNum}</p>
+              <h1 
+                className="text-3xl font-black"
+                style={{ color: level?.color }}
+                data-testid="level-title"
+              >
+                {levelNames[language][parseInt(levelNum)]}
+              </h1>
+            </div>
+          </motion.div>
         </div>
       </header>
 
       {/* Stages Grid */}
       <main className="max-w-4xl mx-auto px-4 py-8">
+        <h2 className="text-2xl font-black text-zinc-900 mb-6">{t('stages')}</h2>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stages.map((stage, index) => {
             const isLocked = !stage.is_unlocked;

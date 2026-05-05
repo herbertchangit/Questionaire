@@ -5,22 +5,28 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { 
-  BookOpen, Landmark, FlaskConical, Trophy, Star, Clock, 
-  Target, LogOut, Settings, Crown, Bell, Award, TrendingUp,
-  ChevronRight, Globe
+  Trophy, Star, Clock, Target, LogOut, Settings, Crown, Bell, Award, TrendingUp,
+  ChevronRight, Globe, Flame, Mountain, Hammer, Rocket, Lock
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const subjectIcons = {
-  'subj_bm': BookOpen,
-  'subj_history': Landmark,
-  'subj_science': FlaskConical
+const levelIcons = {
+  'flame': Flame,
+  'target': Target,
+  'mountain': Mountain,
+  'hammer': Hammer,
+  'rocket': Rocket
+};
+
+const levelNames = {
+  en: { 1: 'Determination', 2: 'Discipline', 3: 'Perseverance', 4: 'Hard-working', 5: 'Breakthrough' },
+  zh: { 1: '决心', 2: '自律', 3: '毅力', 4: '勤劳', 5: '突破' }
 };
 
 function Dashboard() {
   const [user, setUser] = useState(null);
-  const [subjects, setSubjects] = useState([]);
+  const [levels, setLevels] = useState([]);
   const [stats, setStats] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState(null);
   const [notices, setNotices] = useState([]);
@@ -41,16 +47,16 @@ function Dashboard() {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [userRes, subjectsRes, statsRes, welcomeRes, noticesRes] = await Promise.all([
+      const [userRes, levelsRes, statsRes, welcomeRes, noticesRes] = await Promise.all([
         axios.get(`${API_URL}/api/auth/me`, { headers }),
-        axios.get(`${API_URL}/api/subjects`, { headers }),
+        axios.get(`${API_URL}/api/levels`, { headers }),
         axios.get(`${API_URL}/api/progress/stats`, { headers }),
         axios.get(`${API_URL}/api/welcome-message`, { headers }),
         axios.get(`${API_URL}/api/notices`)
       ]);
 
       setUser(userRes.data);
-      setSubjects(subjectsRes.data);
+      setLevels(levelsRes.data);
       setStats(statsRes.data);
       setWelcomeMsg(welcomeRes.data);
       setNotices(noticesRes.data);
@@ -229,57 +235,72 @@ function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Subjects Section */}
+        {/* Levels Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-black text-zinc-900 mb-4">{t('choose_subject')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {subjects.map((subject, index) => {
-              const Icon = subjectIcons[subject.id] || BookOpen;
-              const progress = subject.user_progress;
-              const completionPct = stats?.subject_stats?.find(s => s.subject.id === subject.id)?.completion_percentage || 0;
+          <h2 className="text-2xl font-black text-zinc-900 mb-4">{t('levels')}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {levels.map((level, index) => {
+              const Icon = levelIcons[level.icon] || Flame;
+              const isLocked = !level.is_unlocked;
               
               return (
                 <motion.div
-                  key={subject.id}
+                  key={level.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * index }}
-                  onClick={() => navigate(`/subject/${subject.id}`)}
-                  className="bg-white rounded-2xl p-6 border-2 border-zinc-200 shadow-sm cursor-pointer hover:border-violet-300 hover:shadow-md transition-all group"
-                  data-testid={`subject-card-${subject.id}`}
+                  onClick={() => !isLocked && navigate(`/level/${level.level_num}`)}
+                  className={`bg-white rounded-2xl p-6 border-2 transition-all ${
+                    isLocked 
+                      ? 'border-zinc-200 opacity-60 cursor-not-allowed' 
+                      : 'border-zinc-200 hover:border-violet-300 hover:shadow-md cursor-pointer group'
+                  }`}
+                  data-testid={`level-card-${level.level_num}`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div 
-                      className="p-3 rounded-xl" 
-                      style={{ backgroundColor: `${subject.color}20` }}
+                      className={`p-3 rounded-xl ${isLocked ? 'bg-zinc-100' : ''}`}
+                      style={{ backgroundColor: isLocked ? undefined : `${level.color}20` }}
                     >
-                      <Icon className="w-8 h-8" style={{ color: subject.color }} />
+                      {isLocked ? (
+                        <Lock className="w-8 h-8 text-zinc-400" />
+                      ) : (
+                        <Icon className="w-8 h-8" style={{ color: level.color }} />
+                      )}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-zinc-400 group-hover:text-violet-500 transition-colors" />
+                    {!isLocked && <ChevronRight className="w-5 h-5 text-zinc-400 group-hover:text-violet-500 transition-colors" />}
                   </div>
                   
-                  <h3 className="text-xl font-black text-zinc-900 mb-1">
-                    {language === 'zh' ? subject.name_zh : subject.name_en}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-bold text-zinc-400">{t('level')} {level.level_num}</span>
+                  </div>
+                  <h3 className="text-xl font-black text-zinc-900 mb-2">
+                    {levelNames[language][level.level_num]}
                   </h3>
-                  <p className="text-sm text-zinc-500 mb-4">
-                    {language === 'zh' ? subject.description_zh : subject.description_en}
-                  </p>
                   
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-zinc-600">{t('level')} {progress?.current_level || 1}, {t('stage')} {progress?.current_stage || 1}</span>
-                      <span className="font-bold" style={{ color: subject.color }}>{completionPct}%</span>
+                  {isLocked ? (
+                    <p className="text-sm text-zinc-500">
+                      {t('unlock_at')} {level.unlock_points} {t('points')}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-600">{level.stages_completed || 0}/5 {t('stages')}</span>
+                        <span className="font-bold" style={{ color: level.color }}>
+                          {((level.stages_completed || 0) / 5 * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all"
+                          style={{ 
+                            width: `${((level.stages_completed || 0) / 5) * 100}%`,
+                            backgroundColor: level.color
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full rounded-full transition-all"
-                        style={{ 
-                          width: `${completionPct}%`,
-                          backgroundColor: subject.color
-                        }}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </motion.div>
               );
             })}
@@ -321,7 +342,7 @@ function Dashboard() {
             data-testid="live-btn"
           >
             <TrendingUp className="w-6 h-6" />
-            <span>LIVE Competition (Coming Soon)</span>
+            <span>LIVE Competition ({language === 'zh' ? '即将推出' : 'Coming Soon'})</span>
           </motion.button>
         </div>
       </main>
