@@ -548,6 +548,8 @@ async def live_ws(websocket: WebSocket, code: str, token: str = Query(...)):
     code = code.upper()
     user = await get_user_from_token(token)
     if not user:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "code": "invalid_token"})
         await websocket.close(code=4401, reason="Invalid token")
         return
 
@@ -556,9 +558,13 @@ async def live_ws(websocket: WebSocket, code: str, token: str = Query(...)):
         # try load from db (might not be active anymore)
         room = await _db.live_rooms.find_one({"code": code}, {"_id": 0})
         if not room:
+            await websocket.accept()
+            await websocket.send_json({"type": "error", "code": "room_not_found"})
             await websocket.close(code=4404, reason="Room not found")
             return
         if room.get("status") == "ended":
+            await websocket.accept()
+            await websocket.send_json({"type": "error", "code": "room_ended"})
             await websocket.close(code=4410, reason="Room ended")
             return
         # Re-create state (rare path)
@@ -571,10 +577,14 @@ async def live_ws(websocket: WebSocket, code: str, token: str = Query(...)):
         ROOMS[code] = state
 
     if state.status == "ended":
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "code": "room_ended"})
         await websocket.close(code=4410, reason="Room ended")
         return
 
     if len(state.players) >= state.room_doc.get("max_players", 10) and user["id"] not in state.players:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "code": "room_full"})
         await websocket.close(code=4403, reason="Room full")
         return
 

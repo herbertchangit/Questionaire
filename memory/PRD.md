@@ -109,19 +109,52 @@ Login → Dashboard (shows Levels directly)
 ```
 
 ## Test Credentials
-- **User:** demo@quiz.com / demo123
-- **Admin:** admin@quiz.com / admin123
+- **User:** demo / demo123
+- **Admin:** admin / admin123
 
-## Upcoming Features (Phase 2 & 3)
+## Phase 3 - LIVE Competition Mode ✅ COMPLETE (2026-05-05)
 
-### Phase 2
-- [ ] More sample questions
-- [ ] Achievement badges
-- [ ] Sound effects
+### Implemented:
+- [x] **Host Room Mode**: Host creates room with 6-char code, players join via code (Kahoot-style)
+- [x] **Quick Matchmaking**: Auto-pair 2-4 random users by selected level
+- [x] **Scheduled Tournaments**: Admin creates tournament events; users join when active (within 2-min start window)
+- [x] **WebSocket-based real-time gameplay** (`/api/live/ws/{code}?token=`)
+- [x] **Per-question timer** (5-60s, default 15s) + **Total match timer** (30s-30min)
+- [x] **Speed-bonus scoring**: 1st correct=2x, 2nd=1.8x, ... min 1x base points (10)
+- [x] **Live leaderboard** updated after each question
+- [x] **Final results screen** with rank/medals + confetti for top-3
+- [x] **Up to 20 players per match** (host configurable)
+- [x] **Admin Tournament management page** (`/admin/tournaments`)
+- [x] **Live match history** saved per player (`/api/live/history`)
+- [x] **Bilingual** (EN/ZH) throughout all live screens
 
-### Phase 3 - LIVE Competition
-- [ ] WebSocket real-time gameplay
-- [ ] Create/join LIVE rooms
+### New API Endpoints:
+- `POST /api/live/rooms/create` — Host creates room
+- `GET  /api/live/rooms/{code}` — Get room details
+- `POST /api/live/matchmaking?level_num=N` — Queue / get match
+- `POST /api/live/matchmaking/cancel?level_num=N` — Cancel queue
+- `GET  /api/live/tournaments` — List upcoming tournaments
+- `POST /api/live/tournaments/{id}/start` — Activate tournament
+- `POST /api/live/admin/tournaments` — Admin create tournament
+- `DELETE /api/live/admin/tournaments/{id}` — Admin delete
+- `GET  /api/live/history` — User's past LIVE matches
+- `WS   /api/live/ws/{code}?token=JWT` — Real-time gameplay channel
+
+### New Collections:
+- `live_rooms` — { id, code, host_id, level_num, time_per_question, total_time_limit, max_players, mode, status, created_at }
+- `tournaments` — { id, title_en, title_zh, level_num, scheduled_at, time_per_question, total_time_limit, max_players, status, room_code }
+- `live_match_history` — { id, user_id, room_code, mode, level_num, score, correct_count, rank, completed_at }
+
+### History Page Expansion ✅ (2026-05-05)
+- `/api/progress/history` now returns `subject_breakdown` per quiz: `{ subj_bm: {correct, total}, subj_history: {...}, subj_science: {...} }`
+- Frontend `/history` displays color-coded subject badges (BM/History/Science) showing per-subject correct/total ratio.
+
+## Upcoming / Backlog
+- [ ] **P2: Refactor `server.py`** (~1000 lines) into modular routes (`/routes/auth.py`, `/quiz.py`, `/admin.py`)
+- [ ] **P2: Resend email integration** (currently mocked — needs valid `RESEND_API_KEY`)
+- [ ] **P3**: Achievement badges, sound effects, more sample questions
+- [ ] **P3**: Per-replica scaling for LIVE rooms (currently in-process; use Redis pub/sub for horizontal scaling)
 
 ## Changelog
-- **2026-02-24**: Restructured - Removed subject-level coupling. Levels are now independent game progression with mixed subject questions per stage.
+- **2026-02-24**: Restructured — Removed subject-level coupling. Levels are now independent game progression with mixed subject questions per stage.
+- **2026-05-05**: **LIVE Competition Mode** shipped (host rooms / matchmaking / tournaments + WebSocket gameplay + speed-bonus scoring). History page expanded with subject breakdown.

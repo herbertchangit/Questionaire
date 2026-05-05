@@ -86,6 +86,14 @@ function LiveRoom() {
 
   const handleMessage = (msg) => {
     switch (msg.type) {
+      case 'error':
+        if (msg.code === 'invalid_token') setErrorMsg('Auth failed');
+        else if (msg.code === 'room_not_found') setErrorMsg(language === 'zh' ? '房间不存在' : 'Room not found');
+        else if (msg.code === 'room_full') setErrorMsg(language === 'zh' ? '房间已满' : 'Room is full');
+        else if (msg.code === 'room_ended') setErrorMsg(language === 'zh' ? '房间已结束' : 'Room ended');
+        else setErrorMsg('Connection error');
+        setPhase('error');
+        break;
       case 'joined':
         setMeId(msg.user_id);
         setIsHost(msg.is_host);
