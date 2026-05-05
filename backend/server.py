@@ -12,12 +12,9 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 import jwt
-from emergentintegrations.llm.openai import OpenAITextToSpeech
-import base64
 import asyncio
-import resend
-import secrets
-import string
+import io
+import csv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -26,7 +23,7 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-app = FastAPI()
+app = FastAPI(title="EduQuiz API", version="2.0")
 api_router = APIRouter(prefix="/api")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -36,111 +33,65 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'default_secret')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXPIRATION_HOURS = int(os.environ.get('JWT_EXPIRATION_HOURS', 720))
 
-tts_client = OpenAITextToSpeech(api_key=os.environ.get('EMERGENT_LLM_KEY'))
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-resend.api_key = os.environ.get('RESEND_API_KEY', '')
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
+# ==================== MODELS ====================
 
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
+    language: str = "en"
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
-class PasswordChange(BaseModel):
-    current_password: str
-    new_password: str
 
 class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
     email: str
-    level: int = 1
-    points: int = 0
-    completed_quizzes: List[str] = []
     role: str = "user"
+    language: str = "en"
+    total_points: int = 0
+    current_level: int = 1
+    subject_progress: Dict[str, Any] = {}
+    total_time_spent: int = 0
+    quizzes_completed: int = 0
     created_at: str
 
-class QuizCreate(BaseModel):
-    title: str
-    description: str
-    category: str
-    level_required: int
-    duration_minutes: int
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
 
-class Quiz(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    title: str
-    description: str
-    category: str
-    level_required: int
-    duration_minutes: int
-    questions_count: int = 0
-    created_by: str
-    created_at: str
-    is_published: bool = True
+class LanguageUpdate(BaseModel):
+    language: str
+
+class QuizSubmission(BaseModel):
+    answers: Dict[str, int]
+    time_spent: int
 
 class QuestionCreate(BaseModel):
-    quiz_id: str
-    text: str
-    type: str
-    media_url: Optional[str] = None
-    options: List[str]
+    subject_id: str
+    level_num: int
+    stage_num: int
+    text_en: str
+    text_zh: str
+    options_en: List[str]
+    options_zh: List[str]
     correct_answer: int
     points: int = 10
 
-class Question(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    quiz_id: str
-    text: str
-    type: str
-    media_url: Optional[str] = None
-    options: List[str]
-    correct_answer: int
-    points: int
+class NoticeCreate(BaseModel):
+    title_en: str
+    title_zh: str
+    content_en: str
+    content_zh: str
+    type: str = "announcement"
 
-class QuestionPublic(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    quiz_id: str
-    text: str
-    type: str
-    media_url: Optional[str] = None
-    options: List[str]
-    points: int
-
-class QuizSubmission(BaseModel):
-    quiz_id: str
-    answers: Dict[str, int]
-    time_taken: int
-
-class QuizResult(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    user_id: str
-    quiz_id: str
-    score: int
-    total_questions: int
-    time_taken: int
-    answers: Dict[str, int]
-    completed_at: str
-
-class TTSRequest(BaseModel):
-    text: str
-    voice: str = "alloy"
-
-class Category(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    name: str
-    description: str
-    icon: str
+# ==================== AUTH HELPERS ====================
 
 def create_token(user_id: str, email: str, role: str) -> str:
     exp = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
@@ -154,7 +105,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         user_id = payload.get("user_id")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
-        user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         return User(**user)
@@ -168,7 +119,6 @@ async def get_admin_user(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
-# Helper function to log user activity for analytics
 async def log_activity(user_id: str, action: str, metadata: dict = None):
     await db.activity_logs.insert_one({
         "id": str(uuid.uuid4()),
@@ -177,6 +127,8 @@ async def log_activity(user_id: str, action: str, metadata: dict = None):
         "metadata": metadata or {},
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
+
+# ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate):
@@ -192,17 +144,25 @@ async def register(user_data: UserCreate):
         "name": user_data.name,
         "email": user_data.email,
         "password": hashed_password,
-        "level": 1,
-        "points": 0,
-        "completed_quizzes": [],
         "role": "user",
+        "language": user_data.language,
+        "total_points": 0,
+        "current_level": 1,
+        "subject_progress": {
+            "subj_bm": {"current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []},
+            "subj_history": {"current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []},
+            "subj_science": {"current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []}
+        },
+        "total_time_spent": 0,
+        "quizzes_completed": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     await db.users.insert_one(user_doc)
     token = create_token(user_id, user_data.email, "user")
     
-    return {"token": token, "user": User(**{k: v for k, v in user_doc.items() if k != "password"})}
+    user_response = {k: v for k, v in user_doc.items() if k != "password"}
+    return {"token": token, "user": user_response}
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
@@ -210,621 +170,563 @@ async def login(credentials: UserLogin):
     if not user or not pwd_context.verify(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Log login activity for analytics
     await log_activity(user["id"], "login")
     
     token = create_token(user["id"], user["email"], user["role"])
-    return {"token": token, "user": User(**{k: v for k, v in user.items() if k != "password"})}
+    user_response = {k: v for k, v in user.items() if k != "password"}
+    return {"token": token, "user": user_response}
 
 @api_router.get("/auth/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@api_router.get("/users/stats")
-async def get_user_stats(current_user: User = Depends(get_current_user)):
-    total_quizzes = await db.quizzes.count_documents({"is_published": True})
-    completed = len(current_user.completed_quizzes)
-    
-    results = await db.quiz_results.find({"user_id": current_user.id}, {"_id": 0, "score": 1}).to_list(1000)
-    total_score = sum(r["score"] for r in results)
-    
-    return {
-        "level": current_user.level,
-        "points": current_user.points,
-        "completed_quizzes": completed,
-        "total_quizzes": total_quizzes,
-        "total_score": total_score
-    }
+# ==================== USER ROUTES ====================
 
-@api_router.post("/users/change-password")
-async def change_password(password_data: PasswordChange, current_user: User = Depends(get_current_user)):
-    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if not pwd_context.verify(password_data.current_password, user["password"]):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    
-    new_hashed_password = pwd_context.hash(password_data.new_password)
+@api_router.put("/user/language")
+async def update_language(data: LanguageUpdate, current_user: User = Depends(get_current_user)):
+    if data.language not in ["en", "zh"]:
+        raise HTTPException(status_code=400, detail="Invalid language. Use 'en' or 'zh'")
     
     await db.users.update_one(
         {"id": current_user.id},
-        {"$set": {"password": new_hashed_password}}
+        {"$set": {"language": data.language}}
     )
+    return {"message": "Language updated", "language": data.language}
+
+@api_router.put("/user/profile")
+async def update_profile(name: str, current_user: User = Depends(get_current_user)):
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"name": name}}
+    )
+    return {"message": "Profile updated"}
+
+@api_router.post("/user/change-password")
+async def change_password(data: PasswordChange, current_user: User = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    if not pwd_context.verify(data.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #8B5CF6 0%, #FF4785 100%); color: white; padding: 30px; text-align: center; border-radius: 10px; }}
-            .content {{ background: #f9f9f9; padding: 30px; border-radius: 10px; margin: 20px 0; }}
-            .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 20px; }}
-            .button {{ display: inline-block; background: #8B5CF6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-            .success-box {{ background: #10B981; color: white; padding: 15px; text-align: center; font-weight: bold; border-radius: 5px; margin: 20px 0; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>⚡ QuizPop Password Changed</h1>
-            </div>
-            <div class="content">
-                <p>Hello <strong>{user['name']}</strong>,</p>
-                <div class="success-box">✅ Your password has been successfully changed</div>
-                <p>This email confirms that your QuizPop password was recently updated.</p>
-                <p><strong>Details:</strong></p>
-                <ul>
-                    <li>Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</li>
-                    <li>Account: {user['email']}</li>
-                </ul>
-                <p>If you didn't make this change, please contact support immediately.</p>
-                <a href="https://quizpop-preview-1.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
-            </div>
-            <div class="footer">
-                <p>This is an automated email from QuizPop. Please do not reply to this email.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"password": pwd_context.hash(data.new_password)}}
+    )
+    return {"message": "Password changed successfully"}
+
+# ==================== SUBJECTS & LEVELS ====================
+
+@api_router.get("/subjects")
+async def get_subjects(current_user: User = Depends(get_current_user)):
+    subjects = await db.subjects.find({}, {"_id": 0}).to_list(100)
     
-    try:
-        params = {
-            "from": SENDER_EMAIL,
-            "to": [user["email"]],
-            "subject": "🔐 Your QuizPop Password Has Been Changed",
-            "html": html_content
+    # Add user progress to each subject
+    for subject in subjects:
+        progress = current_user.subject_progress.get(subject["id"], {})
+        subject["user_progress"] = {
+            "current_level": progress.get("current_level", 1),
+            "current_stage": progress.get("current_stage", 1),
+            "total_points": progress.get("total_points", 0),
+            "stages_completed": len(progress.get("stages_completed", []))
         }
-        await asyncio.to_thread(resend.Emails.send, params)
-        email_sent = True
-    except Exception as e:
-        logger.error(f"Failed to send password change email: {str(e)}")
-        email_sent = False
+    
+    return subjects
+
+@api_router.get("/levels")
+async def get_levels(current_user: User = Depends(get_current_user)):
+    levels = await db.levels.find({}, {"_id": 0}).sort("level_num", 1).to_list(100)
+    
+    # Check which levels are unlocked for user
+    for level in levels:
+        level["is_unlocked"] = current_user.total_points >= level["unlock_points"]
+    
+    return levels
+
+@api_router.get("/subjects/{subject_id}/levels")
+async def get_subject_levels(subject_id: str, current_user: User = Depends(get_current_user)):
+    subject = await db.subjects.find_one({"id": subject_id}, {"_id": 0})
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    levels = await db.levels.find({}, {"_id": 0}).sort("level_num", 1).to_list(100)
+    user_progress = current_user.subject_progress.get(subject_id, {})
+    stages_completed = user_progress.get("stages_completed", [])
+    
+    for level in levels:
+        level["is_unlocked"] = current_user.total_points >= level["unlock_points"]
+        # Count completed stages for this level in this subject
+        level_stages = [s for s in stages_completed if f"level_{level['level_num']}" in s]
+        level["stages_completed"] = len(level_stages)
+    
+    return {"subject": subject, "levels": levels}
+
+@api_router.get("/subjects/{subject_id}/levels/{level_num}/stages")
+async def get_level_stages(subject_id: str, level_num: int, current_user: User = Depends(get_current_user)):
+    stages = await db.stages.find(
+        {"subject_id": subject_id, "level_num": level_num},
+        {"_id": 0}
+    ).sort("stage_num", 1).to_list(100)
+    
+    user_progress = current_user.subject_progress.get(subject_id, {})
+    stages_completed = user_progress.get("stages_completed", [])
+    
+    for stage in stages:
+        stage["is_completed"] = stage["id"] in stages_completed
+        # Stage is unlocked if previous stage is completed or it's stage 1
+        if stage["stage_num"] == 1:
+            stage["is_unlocked"] = True
+        else:
+            prev_stage_id = f"stage_{subject_id}_level_{level_num}_{stage['stage_num'] - 1}"
+            stage["is_unlocked"] = prev_stage_id in stages_completed
+    
+    return stages
+
+# ==================== QUIZ GAMEPLAY ====================
+
+@api_router.get("/stages/{stage_id}/play")
+async def start_stage(stage_id: str, current_user: User = Depends(get_current_user)):
+    stage = await db.stages.find_one({"id": stage_id}, {"_id": 0})
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    # Get questions for this stage
+    questions = await db.edu_questions.find(
+        {"subject_id": stage["subject_id"], "level_num": stage["level_num"], "stage_num": stage["stage_num"]},
+        {"_id": 0, "correct_answer": 0}
+    ).to_list(100)
+    
+    await log_activity(current_user.id, "quiz_start", {"stage_id": stage_id})
     
     return {
-        "message": "Password changed successfully",
-        "email_sent": email_sent
+        "stage": stage,
+        "questions": questions,
+        "time_limit": stage["time_limit"]
     }
 
-@api_router.get("/categories")
-async def get_categories():
-    categories = await db.categories.find({}, {"_id": 0}).limit(50).to_list(50)
-    return categories
-
-@api_router.get("/quizzes")
-async def get_quizzes(current_user: User = Depends(get_current_user)):
-    quizzes = await db.quizzes.find(
-        {"is_published": True, "level_required": {"$lte": current_user.level}},
+@api_router.post("/stages/{stage_id}/submit")
+async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: User = Depends(get_current_user)):
+    stage = await db.stages.find_one({"id": stage_id}, {"_id": 0})
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    # Get questions with answers
+    questions = await db.edu_questions.find(
+        {"subject_id": stage["subject_id"], "level_num": stage["level_num"], "stage_num": stage["stage_num"]},
         {"_id": 0}
-    ).limit(50).to_list(50)
+    ).to_list(100)
     
-    for quiz in quizzes:
-        quiz["completed"] = quiz["id"] in current_user.completed_quizzes
-    
-    return quizzes
-
-@api_router.get("/quizzes/{quiz_id}")
-async def get_quiz(quiz_id: str, current_user: User = Depends(get_current_user)):
-    quiz = await db.quizzes.find_one({"id": quiz_id}, {"_id": 0})
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    
-    if quiz["level_required"] > current_user.level:
-        raise HTTPException(status_code=403, detail="Level requirement not met")
-    
-    # Log quiz start for analytics
-    await log_activity(current_user.id, "quiz_start", {"quiz_id": quiz_id})
-    
-    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0, "correct_answer": 0}).to_list(100)
-    
-    return {**quiz, "questions": questions}
-
-@api_router.post("/quizzes/{quiz_id}/submit")
-async def submit_quiz(quiz_id: str, submission: QuizSubmission, current_user: User = Depends(get_current_user)):
-    quiz = await db.quizzes.find_one({"id": quiz_id}, {"_id": 0})
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    
-    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0}).to_list(1000)
-    
+    # Calculate score
     correct_count = 0
     total_points = 0
+    results = []
     
     for q in questions:
         user_answer = submission.answers.get(q["id"])
-        if user_answer is not None and user_answer == q["correct_answer"]:
+        is_correct = user_answer == q["correct_answer"]
+        if is_correct:
             correct_count += 1
             total_points += q["points"]
+        results.append({
+            "question_id": q["id"],
+            "user_answer": user_answer,
+            "correct_answer": q["correct_answer"],
+            "is_correct": is_correct
+        })
     
-    result_id = str(uuid.uuid4())
-    result_doc = {
-        "id": result_id,
+    # Save quiz history
+    history_doc = {
+        "id": str(uuid.uuid4()),
         "user_id": current_user.id,
-        "quiz_id": quiz_id,
-        "score": total_points,
-        "total_questions": len(questions),
-        "time_taken": submission.time_taken,
-        "answers": submission.answers,
+        "subject_id": stage["subject_id"],
+        "level_num": stage["level_num"],
+        "stage_num": stage["stage_num"],
+        "stage_id": stage_id,
+        "score": correct_count,
+        "total": len(questions),
+        "points_earned": total_points,
+        "time_spent": submission.time_spent,
+        "results": results,
         "completed_at": datetime.now(timezone.utc).isoformat()
     }
+    await db.quiz_history.insert_one(history_doc)
     
-    await db.quiz_results.insert_one(result_doc)
+    # Update user progress
+    subject_id = stage["subject_id"]
+    user_progress = current_user.subject_progress.get(subject_id, {
+        "current_level": 1, "current_stage": 1, "total_points": 0, "stages_completed": []
+    })
     
-    if quiz_id not in current_user.completed_quizzes:
-        new_level = current_user.level + 1
-        await db.users.update_one(
-            {"id": current_user.id},
-            {
-                "$push": {"completed_quizzes": quiz_id},
-                "$set": {"level": new_level},
-                "$inc": {"points": total_points}
+    stages_completed = user_progress.get("stages_completed", [])
+    if stage_id not in stages_completed:
+        stages_completed.append(stage_id)
+    
+    # Calculate new level/stage
+    new_current_stage = stage["stage_num"] + 1 if stage["stage_num"] < 5 else 1
+    new_current_level = stage["level_num"] + 1 if new_current_stage == 1 and stage["stage_num"] == 5 else stage["level_num"]
+    if new_current_level > 5:
+        new_current_level = 5
+        new_current_stage = 5
+    
+    await db.users.update_one(
+        {"id": current_user.id},
+        {
+            "$inc": {
+                "total_points": total_points,
+                "total_time_spent": submission.time_spent,
+                "quizzes_completed": 1
+            },
+            "$set": {
+                f"subject_progress.{subject_id}.current_level": new_current_level,
+                f"subject_progress.{subject_id}.current_stage": new_current_stage,
+                f"subject_progress.{subject_id}.stages_completed": stages_completed,
+            },
+            "$inc": {
+                f"subject_progress.{subject_id}.total_points": total_points
             }
-        )
-        level_up = True
-    else:
-        await db.users.update_one(
-            {"id": current_user.id},
-            {"$inc": {"points": total_points}}
-        )
-        level_up = False
-    
-    return {
-        "result": QuizResult(**result_doc),
-        "correct_count": correct_count,
-        "level_up": level_up,
-        "new_level": current_user.level + 1 if level_up else current_user.level
-    }
-
-@api_router.post("/admin/quizzes")
-async def create_quiz(quiz_data: QuizCreate, admin: User = Depends(get_admin_user)):
-    quiz_id = str(uuid.uuid4())
-    quiz_doc = {
-        "id": quiz_id,
-        "title": quiz_data.title,
-        "description": quiz_data.description,
-        "category": quiz_data.category,
-        "level_required": quiz_data.level_required,
-        "duration_minutes": quiz_data.duration_minutes,
-        "questions_count": 0,
-        "created_by": admin.id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "is_published": True
-    }
-    
-    await db.quizzes.insert_one(quiz_doc)
-    return Quiz(**quiz_doc)
-
-@api_router.get("/admin/quizzes")
-async def get_admin_quizzes(admin: User = Depends(get_admin_user)):
-    quizzes = await db.quizzes.find({}, {"_id": 0}).limit(100).to_list(100)
-    return quizzes
-
-@api_router.delete("/admin/quizzes/{quiz_id}")
-async def delete_quiz(quiz_id: str, admin: User = Depends(get_admin_user)):
-    result = await db.quizzes.delete_one({"id": quiz_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    
-    await db.questions.delete_many({"quiz_id": quiz_id})
-    return {"message": "Quiz deleted successfully"}
-
-@api_router.post("/admin/questions")
-async def create_question(question_data: QuestionCreate, admin: User = Depends(get_admin_user)):
-    question_id = str(uuid.uuid4())
-    question_doc = {
-        "id": question_id,
-        "quiz_id": question_data.quiz_id,
-        "text": question_data.text,
-        "type": question_data.type,
-        "media_url": question_data.media_url,
-        "options": question_data.options,
-        "correct_answer": question_data.correct_answer,
-        "points": question_data.points
-    }
-    
-    await db.questions.insert_one(question_doc)
-    await db.quizzes.update_one(
-        {"id": question_data.quiz_id},
-        {"$inc": {"questions_count": 1}}
+        }
     )
     
-    return Question(**question_doc)
+    # Calculate overall level based on total points
+    new_total_points = current_user.total_points + total_points
+    levels = await db.levels.find({}, {"_id": 0}).sort("unlock_points", -1).to_list(100)
+    overall_level = 1
+    for level in levels:
+        if new_total_points >= level["unlock_points"]:
+            overall_level = level["level_num"]
+            break
+    
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"current_level": overall_level}}
+    )
+    
+    return {
+        "score": correct_count,
+        "total": len(questions),
+        "points_earned": total_points,
+        "time_spent": submission.time_spent,
+        "results": results,
+        "new_total_points": new_total_points,
+        "level_up": overall_level > current_user.current_level
+    }
 
-@api_router.get("/admin/questions/{quiz_id}")
-async def get_admin_questions(quiz_id: str, admin: User = Depends(get_admin_user)):
-    questions = await db.questions.find({"quiz_id": quiz_id}, {"_id": 0}).limit(100).to_list(100)
+# ==================== PROGRESS & HISTORY ====================
+
+@api_router.get("/progress/stats")
+async def get_progress_stats(current_user: User = Depends(get_current_user)):
+    # Get fresh user data
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password": 0})
+    
+    # Get subject details
+    subjects = await db.subjects.find({}, {"_id": 0}).to_list(100)
+    
+    subject_stats = []
+    for subject in subjects:
+        progress = user.get("subject_progress", {}).get(subject["id"], {})
+        stages_completed = progress.get("stages_completed", [])
+        
+        # Calculate completion percentage (25 total stages per subject: 5 levels x 5 stages)
+        total_stages = 25
+        completion_pct = round((len(stages_completed) / total_stages) * 100, 1)
+        
+        subject_stats.append({
+            "subject": subject,
+            "current_level": progress.get("current_level", 1),
+            "current_stage": progress.get("current_stage", 1),
+            "total_points": progress.get("total_points", 0),
+            "stages_completed": len(stages_completed),
+            "total_stages": total_stages,
+            "completion_percentage": completion_pct
+        })
+    
+    return {
+        "total_points": user.get("total_points", 0),
+        "current_level": user.get("current_level", 1),
+        "total_time_spent": user.get("total_time_spent", 0),
+        "quizzes_completed": user.get("quizzes_completed", 0),
+        "subject_stats": subject_stats
+    }
+
+@api_router.get("/progress/history")
+async def get_quiz_history(
+    subject_id: Optional[str] = None,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    query = {"user_id": current_user.id}
+    if subject_id:
+        query["subject_id"] = subject_id
+    
+    history = await db.quiz_history.find(
+        query,
+        {"_id": 0, "results": 0}
+    ).sort("completed_at", -1).limit(limit).to_list(limit)
+    
+    return history
+
+# ==================== LEADERBOARD ====================
+
+@api_router.get("/leaderboard")
+async def get_leaderboard(subject_id: Optional[str] = None, limit: int = 20):
+    if subject_id:
+        # Subject-specific leaderboard
+        pipeline = [
+            {"$project": {
+                "_id": 0,
+                "id": 1,
+                "name": 1,
+                "points": f"$subject_progress.{subject_id}.total_points"
+            }},
+            {"$match": {"points": {"$gt": 0}}},
+            {"$sort": {"points": -1}},
+            {"$limit": limit}
+        ]
+    else:
+        # Global leaderboard
+        pipeline = [
+            {"$project": {
+                "_id": 0,
+                "id": 1,
+                "name": 1,
+                "points": "$total_points",
+                "level": "$current_level"
+            }},
+            {"$sort": {"points": -1}},
+            {"$limit": limit}
+        ]
+    
+    users = await db.users.aggregate(pipeline).to_list(limit)
+    
+    # Add rank
+    for i, user in enumerate(users):
+        user["rank"] = i + 1
+    
+    return users
+
+# ==================== WELCOME MESSAGES ====================
+
+@api_router.get("/welcome-message")
+async def get_welcome_message(current_user: User = Depends(get_current_user)):
+    # Determine condition
+    condition = "returning_user"
+    if current_user.quizzes_completed == 0:
+        condition = "new_user"
+    elif current_user.total_points > 0:
+        condition = "has_progress"
+    
+    message = await db.welcome_messages.find_one(
+        {"condition": condition},
+        {"_id": 0}
+    )
+    
+    return message
+
+# ==================== NOTICES ====================
+
+@api_router.get("/notices")
+async def get_notices():
+    notices = await db.notices.find(
+        {"is_active": True},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(10).to_list(10)
+    return notices
+
+# ==================== ADMIN ROUTES ====================
+
+@api_router.get("/admin/questions")
+async def get_admin_questions(
+    subject_id: Optional[str] = None,
+    level_num: Optional[int] = None,
+    admin: User = Depends(get_admin_user)
+):
+    query = {}
+    if subject_id:
+        query["subject_id"] = subject_id
+    if level_num:
+        query["level_num"] = level_num
+    
+    questions = await db.edu_questions.find(query, {"_id": 0}).limit(500).to_list(500)
     return questions
+
+@api_router.post("/admin/questions")
+async def create_question(question: QuestionCreate, admin: User = Depends(get_admin_user)):
+    stage_id = f"stage_{question.subject_id}_level_{question.level_num}_{question.stage_num}"
+    
+    question_doc = {
+        "id": str(uuid.uuid4()),
+        "subject_id": question.subject_id,
+        "level_num": question.level_num,
+        "stage_num": question.stage_num,
+        "stage_id": stage_id,
+        "text_en": question.text_en,
+        "text_zh": question.text_zh,
+        "options_en": question.options_en,
+        "options_zh": question.options_zh,
+        "correct_answer": question.correct_answer,
+        "points": question.points,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": admin.id
+    }
+    
+    await db.edu_questions.insert_one(question_doc)
+    return {"message": "Question created", "id": question_doc["id"]}
+
+@api_router.put("/admin/questions/{question_id}")
+async def update_question(question_id: str, question: QuestionCreate, admin: User = Depends(get_admin_user)):
+    result = await db.edu_questions.update_one(
+        {"id": question_id},
+        {"$set": {
+            "text_en": question.text_en,
+            "text_zh": question.text_zh,
+            "options_en": question.options_en,
+            "options_zh": question.options_zh,
+            "correct_answer": question.correct_answer,
+            "points": question.points,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Question not found")
+    return {"message": "Question updated"}
 
 @api_router.delete("/admin/questions/{question_id}")
 async def delete_question(question_id: str, admin: User = Depends(get_admin_user)):
-    question = await db.questions.find_one({"id": question_id}, {"_id": 0})
-    if not question:
+    result = await db.edu_questions.delete_one({"id": question_id})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Question not found")
-    
-    await db.questions.delete_one({"id": question_id})
-    await db.quizzes.update_one(
-        {"id": question["quiz_id"]},
-        {"$inc": {"questions_count": -1}}
-    )
-    
-    return {"message": "Question deleted successfully"}
+    return {"message": "Question deleted"}
 
-@api_router.put("/admin/questions/{question_id}")
-async def update_question(question_id: str, question_data: QuestionCreate, admin: User = Depends(get_admin_user)):
-    question = await db.questions.find_one({"id": question_id}, {"_id": 0})
-    if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
+@api_router.post("/admin/questions/bulk")
+async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depends(get_admin_user)):
+    """
+    Upload questions via CSV file.
+    Expected columns: subject_id, level_num, stage_num, text_en, text_zh, option1_en, option2_en, option3_en, option4_en, option1_zh, option2_zh, option3_zh, option4_zh, correct_answer, points
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
-    update_doc = {
-        "text": question_data.text,
-        "type": question_data.type,
-        "media_url": question_data.media_url,
-        "options": question_data.options,
-        "correct_answer": question_data.correct_answer,
-        "points": question_data.points
+    content = await file.read()
+    decoded = content.decode('utf-8')
+    reader = csv.DictReader(io.StringIO(decoded))
+    
+    questions = []
+    errors = []
+    row_num = 1
+    
+    for row in reader:
+        row_num += 1
+        try:
+            stage_id = f"stage_{row['subject_id']}_level_{row['level_num']}_{row['stage_num']}"
+            question_doc = {
+                "id": str(uuid.uuid4()),
+                "subject_id": row["subject_id"],
+                "level_num": int(row["level_num"]),
+                "stage_num": int(row["stage_num"]),
+                "stage_id": stage_id,
+                "text_en": row["text_en"],
+                "text_zh": row["text_zh"],
+                "options_en": [row["option1_en"], row["option2_en"], row["option3_en"], row["option4_en"]],
+                "options_zh": [row["option1_zh"], row["option2_zh"], row["option3_zh"], row["option4_zh"]],
+                "correct_answer": int(row["correct_answer"]),
+                "points": int(row.get("points", 10)),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_by": admin.id
+            }
+            questions.append(question_doc)
+        except Exception as e:
+            errors.append(f"Row {row_num}: {str(e)}")
+    
+    if questions:
+        await db.edu_questions.insert_many(questions)
+    
+    return {
+        "message": f"Uploaded {len(questions)} questions",
+        "uploaded": len(questions),
+        "errors": errors
     }
-    
-    await db.questions.update_one(
-        {"id": question_id},
-        {"$set": update_doc}
-    )
-    
-    updated_question = await db.questions.find_one({"id": question_id}, {"_id": 0})
-    return Question(**updated_question)
 
-@api_router.post("/admin/questions/tts")
-async def generate_tts(tts_request: TTSRequest, admin: User = Depends(get_admin_user)):
-    try:
-        audio_bytes = await tts_client.generate_speech(
-            text=tts_request.text,
-            model="tts-1",
-            voice=tts_request.voice
-        )
-        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-        return {"audio_data": f"data:audio/mp3;base64,{audio_base64}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
+# Admin notices
+@api_router.post("/admin/notices")
+async def create_notice(notice: NoticeCreate, admin: User = Depends(get_admin_user)):
+    notice_doc = {
+        "id": str(uuid.uuid4()),
+        "title_en": notice.title_en,
+        "title_zh": notice.title_zh,
+        "content_en": notice.content_en,
+        "content_zh": notice.content_zh,
+        "type": notice.type,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": admin.id
+    }
+    await db.notices.insert_one(notice_doc)
+    return {"message": "Notice created", "id": notice_doc["id"]}
 
-@api_router.post("/admin/categories")
-async def create_category(category_data: Category, admin: User = Depends(get_admin_user)):
-    category_doc = category_data.model_dump()
-    category_doc["id"] = str(uuid.uuid4())
-    await db.categories.insert_one(category_doc)
-    return Category(**category_doc)
+@api_router.get("/admin/notices")
+async def get_admin_notices(admin: User = Depends(get_admin_user)):
+    notices = await db.notices.find({}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
+    return notices
 
-# User Management Endpoints
+@api_router.delete("/admin/notices/{notice_id}")
+async def delete_notice(notice_id: str, admin: User = Depends(get_admin_user)):
+    result = await db.notices.delete_one({"id": notice_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Notice not found")
+    return {"message": "Notice deleted"}
+
+# Admin users
 @api_router.get("/admin/users")
-async def get_all_users(admin: User = Depends(get_admin_user)):
+async def get_admin_users(admin: User = Depends(get_admin_user)):
     users = await db.users.find({}, {"_id": 0, "password": 0}).limit(200).to_list(200)
     return users
 
 @api_router.delete("/admin/users/{user_id}")
 async def delete_user(user_id: str, admin: User = Depends(get_admin_user)):
     if user_id == admin.id:
-        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
-    
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    if not user:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    await db.users.delete_one({"id": user_id})
-    await db.quiz_results.delete_many({"user_id": user_id})
-    
-    return {"message": f"User {user['email']} deleted successfully"}
+    return {"message": "User deleted"}
 
-@api_router.post("/admin/users/{user_id}/reset-password")
-async def reset_user_password(user_id: str, admin: User = Depends(get_admin_user)):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Generate random password
-    new_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
-    hashed_password = pwd_context.hash(new_password)
-    
-    await db.users.update_one(
-        {"id": user_id},
-        {"$set": {"password": hashed_password}}
-    )
-    
-    # Send email with new password
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #8B5CF6 0%, #FF4785 100%); color: white; padding: 30px; text-align: center; border-radius: 10px; }}
-            .content {{ background: #f9f9f9; padding: 30px; border-radius: 10px; margin: 20px 0; }}
-            .password-box {{ background: white; border: 2px solid #8B5CF6; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; border-radius: 5px; margin: 20px 0; }}
-            .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 20px; }}
-            .button {{ display: inline-block; background: #8B5CF6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>⚡ QuizPop Password Reset</h1>
-            </div>
-            <div class="content">
-                <p>Hello <strong>{user['name']}</strong>,</p>
-                <p>Your password has been reset by an administrator. Your new temporary password is:</p>
-                <div class="password-box">{new_password}</div>
-                <p><strong>Important:</strong> Please log in and change this password immediately for security reasons.</p>
-                <a href="https://quizpop-preview-1.preview.emergentagent.com/login" class="button">Login to QuizPop</a>
-                <p>If you didn't request this password reset, please contact support immediately.</p>
-            </div>
-            <div class="footer">
-                <p>This is an automated email from QuizPop. Please do not reply to this email.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    try:
-        params = {
-            "from": SENDER_EMAIL,
-            "to": [user["email"]],
-            "subject": "🔐 Your QuizPop Password Has Been Reset",
-            "html": html_content
-        }
-        await asyncio.to_thread(resend.Emails.send, params)
-        email_sent = True
-        message = f"Password reset successfully. Email sent to {user['email']}"
-    except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}")
-        email_sent = False
-        message = "Password reset successfully but email failed to send"
-    
-    return {
-        "message": message,
-        "email_sent": email_sent,
-        "new_password": new_password,
-        "user_email": user["email"]
-    }
-
-@api_router.post("/admin/users/{user_id}/reset-progress")
-async def reset_user_progress(user_id: str, admin: User = Depends(get_admin_user)):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    await db.users.update_one(
-        {"id": user_id},
-        {
-            "$set": {
-                "level": 1,
-                "points": 0,
-                "completed_quizzes": []
-            }
-        }
-    )
-    
-    await db.quiz_results.delete_many({"user_id": user_id})
-    
-    return {
-        "message": f"Progress reset successfully for {user['name']}",
-        "user_email": user["email"]
-    }
-
-# Analytics Endpoints
-@api_router.get("/admin/analytics/summary")
-async def get_analytics_summary(admin: User = Depends(get_admin_user)):
-    """Get quick summary metrics for admin dashboard"""
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    # DAU - count unique users who logged in today (from activity_logs)
-    dau_count = await db.activity_logs.distinct("user_id", {
-        "action": "login",
-        "timestamp": {"$gte": today_start.isoformat()}
-    })
-    dau = len(dau_count)
-    
+# Admin reports
+@api_router.get("/admin/reports")
+async def get_admin_reports(admin: User = Depends(get_admin_user)):
     # Total users
     total_users = await db.users.count_documents({})
     
-    # Quiz completion rate
-    total_quiz_results = await db.quiz_results.count_documents({})
-    total_quiz_starts = await db.activity_logs.count_documents({"action": "quiz_start"})
-    completion_rate = round((total_quiz_results / max(total_quiz_starts, 1)) * 100, 1)
+    # Total quizzes completed
+    total_quizzes = await db.quiz_history.count_documents({})
     
-    # Average score
-    pipeline = [{"$group": {"_id": None, "avg_score": {"$avg": "$score"}}}]
-    avg_result = await db.quiz_results.aggregate(pipeline).to_list(1)
-    avg_score = round(avg_result[0]["avg_score"], 1) if avg_result else 0
-    
-    # 7-day retention
-    seven_days_ago = now - timedelta(days=7)
-    users_signed_up = await db.users.count_documents({
-        "created_at": {"$lte": seven_days_ago.isoformat()}
-    })
-    
-    if users_signed_up > 0:
-        retained_users = await db.activity_logs.distinct("user_id", {
-            "action": "login",
-            "timestamp": {"$gte": seven_days_ago.isoformat()}
+    # Subject breakdown
+    subject_stats = []
+    subjects = await db.subjects.find({}, {"_id": 0}).to_list(100)
+    for subject in subjects:
+        count = await db.quiz_history.count_documents({"subject_id": subject["id"]})
+        avg_pipeline = [
+            {"$match": {"subject_id": subject["id"]}},
+            {"$group": {"_id": None, "avg_score": {"$avg": {"$divide": ["$score", "$total"]}}}}
+        ]
+        avg_result = await db.quiz_history.aggregate(avg_pipeline).to_list(1)
+        avg_score = round(avg_result[0]["avg_score"] * 100, 1) if avg_result else 0
+        
+        subject_stats.append({
+            "subject": subject,
+            "quizzes_completed": count,
+            "average_score_pct": avg_score
         })
-        # Filter to only users who signed up before 7 days ago
-        old_users = await db.users.find(
-            {"created_at": {"$lte": seven_days_ago.isoformat()}},
-            {"_id": 0, "id": 1}
-        ).to_list(1000)
-        old_user_ids = {u["id"] for u in old_users}
-        retained_count = len(set(retained_users) & old_user_ids)
-        retention_7d = round((retained_count / users_signed_up) * 100, 1)
-    else:
-        retention_7d = 0
+    
+    # Active users (last 7 days)
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    active_users = await db.activity_logs.distinct("user_id", {"timestamp": {"$gte": seven_days_ago}})
     
     return {
-        "dau": dau,
         "total_users": total_users,
-        "completion_rate": completion_rate,
-        "avg_score": avg_score,
-        "retention_7d": retention_7d
+        "total_quizzes_completed": total_quizzes,
+        "active_users_7d": len(active_users),
+        "subject_stats": subject_stats
     }
 
-@api_router.get("/admin/analytics/detailed")
-async def get_detailed_analytics(admin: User = Depends(get_admin_user)):
-    """Get detailed analytics with historical data for charts"""
-    now = datetime.now(timezone.utc)
-    
-    # DAU for last 14 days
-    dau_data = []
-    for i in range(13, -1, -1):
-        day = now - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        
-        unique_users = await db.activity_logs.distinct("user_id", {
-            "action": "login",
-            "timestamp": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
-        })
-        
-        dau_data.append({
-            "date": day_start.strftime("%b %d"),
-            "users": len(unique_users)
-        })
-    
-    # Quiz completions per day (last 14 days)
-    completion_data = []
-    for i in range(13, -1, -1):
-        day = now - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        
-        completions = await db.quiz_results.count_documents({
-            "completed_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
-        })
-        
-        completion_data.append({
-            "date": day_start.strftime("%b %d"),
-            "completions": completions
-        })
-    
-    # Average score trend (last 14 days)
-    score_data = []
-    for i in range(13, -1, -1):
-        day = now - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        
-        pipeline = [
-            {"$match": {"completed_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}}},
-            {"$group": {"_id": None, "avg_score": {"$avg": "$score"}}}
-        ]
-        result = await db.quiz_results.aggregate(pipeline).to_list(1)
-        avg = round(result[0]["avg_score"], 1) if result else 0
-        
-        score_data.append({
-            "date": day_start.strftime("%b %d"),
-            "avgScore": avg
-        })
-    
-    # Retention data (3-day and 7-day)
-    three_days_ago = now - timedelta(days=3)
-    seven_days_ago = now - timedelta(days=7)
-    
-    # Users who signed up more than 3 days ago
-    users_3d = await db.users.find(
-        {"created_at": {"$lte": three_days_ago.isoformat()}},
-        {"_id": 0, "id": 1}
-    ).to_list(1000)
-    users_3d_ids = {u["id"] for u in users_3d}
-    
-    # Users who signed up more than 7 days ago
-    users_7d = await db.users.find(
-        {"created_at": {"$lte": seven_days_ago.isoformat()}},
-        {"_id": 0, "id": 1}
-    ).to_list(1000)
-    users_7d_ids = {u["id"] for u in users_7d}
-    
-    # Active in last 3 days
-    active_3d = await db.activity_logs.distinct("user_id", {
-        "action": "login",
-        "timestamp": {"$gte": three_days_ago.isoformat()}
-    })
-    
-    # Active in last 7 days
-    active_7d = await db.activity_logs.distinct("user_id", {
-        "action": "login",
-        "timestamp": {"$gte": seven_days_ago.isoformat()}
-    })
-    
-    retention_3d = round((len(set(active_3d) & users_3d_ids) / max(len(users_3d_ids), 1)) * 100, 1)
-    retention_7d = round((len(set(active_7d) & users_7d_ids) / max(len(users_7d_ids), 1)) * 100, 1)
-    
-    # Score improvement - compare first vs last quiz for each user
-    improvement_pipeline = [
-        {"$sort": {"completed_at": 1}},
-        {"$group": {
-            "_id": "$user_id",
-            "first_score": {"$first": "$score"},
-            "last_score": {"$last": "$score"},
-            "count": {"$sum": 1}
-        }},
-        {"$match": {"count": {"$gte": 2}}},
-        {"$project": {
-            "improvement": {"$subtract": ["$last_score", "$first_score"]}
-        }}
-    ]
-    improvements = await db.quiz_results.aggregate(improvement_pipeline).to_list(1000)
-    avg_improvement = round(sum(i["improvement"] for i in improvements) / max(len(improvements), 1), 1)
-    
-    # Category performance
-    category_pipeline = [
-        {"$lookup": {
-            "from": "quizzes",
-            "localField": "quiz_id",
-            "foreignField": "id",
-            "as": "quiz"
-        }},
-        {"$unwind": "$quiz"},
-        {"$group": {
-            "_id": "$quiz.category",
-            "avgScore": {"$avg": "$score"},
-            "count": {"$sum": 1}
-        }}
-    ]
-    category_stats = await db.quiz_results.aggregate(category_pipeline).to_list(100)
-    category_data = [
-        {"category": c["_id"], "avgScore": round(c["avgScore"], 1), "attempts": c["count"]}
-        for c in category_stats
-    ]
-    
-    return {
-        "dau_trend": dau_data,
-        "completion_trend": completion_data,
-        "score_trend": score_data,
-        "retention": {"day3": retention_3d, "day7": retention_7d},
-        "avg_improvement": avg_improvement,
-        "category_performance": category_data
-    }
+# ==================== APP SETUP ====================
 
 app.include_router(api_router)
 
@@ -835,12 +737,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

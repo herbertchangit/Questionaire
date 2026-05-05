@@ -3,230 +3,190 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Crown, Plus, Trash2, ArrowLeft, FileQuestion, Users, BarChart3, TrendingUp, Target, Activity } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+import { 
+  ArrowLeft, Crown, FileQuestion, Users, Bell, BarChart3, 
+  BookOpen, Landmark, FlaskConical
+} from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 function AdminDashboard() {
-  const [quizzes, setQuizzes] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
+  const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
-    fetchData();
+    fetchReports();
   }, []);
 
-  const fetchData = async () => {
+  const fetchReports = async () => {
     const token = localStorage.getItem('token');
     try {
-      const [quizzesRes, analyticsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/admin/quizzes`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/api/admin/analytics/summary`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      ]);
-      setQuizzes(quizzesRes.data);
-      setAnalytics(analyticsRes.data);
+      const response = await axios.get(`${API_URL}/api/admin/reports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setReports(response.data);
     } catch (error) {
-      toast.error('Failed to load data');
+      toast.error('Failed to load reports');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (quizId) => {
-    if (!window.confirm('Are you sure you want to delete this quiz?')) return;
-
-    const token = localStorage.getItem('token');
-    try {
-      await axios.delete(`${API_URL}/api/admin/quizzes/${quizId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Quiz deleted successfully');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to delete quiz');
+  const menuItems = [
+    { 
+      icon: FileQuestion, 
+      title: language === 'zh' ? '管理问题' : 'Manage Questions',
+      desc: language === 'zh' ? '添加、编辑或删除测验问题' : 'Add, edit or delete quiz questions',
+      path: '/admin/questions',
+      color: 'violet'
+    },
+    { 
+      icon: Users, 
+      title: language === 'zh' ? '管理用户' : 'Manage Users',
+      desc: language === 'zh' ? '查看和管理用户账户' : 'View and manage user accounts',
+      path: '/admin/users',
+      color: 'blue'
+    },
+    { 
+      icon: Bell, 
+      title: language === 'zh' ? '管理通知' : 'Manage Notices',
+      desc: language === 'zh' ? '创建公告和通知' : 'Create announcements and notices',
+      path: '/admin/notices',
+      color: 'pink'
+    },
+    { 
+      icon: BarChart3, 
+      title: language === 'zh' ? '报告' : 'Reports',
+      desc: language === 'zh' ? '查看详细分析' : 'View detailed analytics',
+      path: '/admin/reports',
+      color: 'green'
     }
-  };
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-violet-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8" data-testid="admin-dashboard">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-yellow-400 to-yellow-500 neo-border neo-shadow-deep rounded-2xl p-6 md:p-8 mb-8"
-        >
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-zinc-950 neo-border neo-shadow p-4 rounded-2xl">
-                <Crown className="w-10 h-10 text-yellow-400" data-testid="admin-crown-icon" />
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-5xl font-black text-zinc-950" data-testid="admin-title">
-                  Admin Panel
-                </h1>
-                <p className="text-zinc-950 font-bold">Manage quizzes and questions</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-white text-zinc-950 font-bold px-6 py-3 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
-              data-testid="back-to-user-button"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              User View
-            </button>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white neo-border neo-shadow rounded-2xl p-6 mb-8"
-        >
-          <div className="flex flex-col md:flex-row gap-4">
-            <button
-              onClick={() => navigate('/admin/quiz/create')}
-              className="flex-1 bg-violet-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
-              data-testid="create-quiz-button"
-            >
-              <Plus className="w-6 h-6" />
-              Create New Quiz
-            </button>
-            <button
-              onClick={() => navigate('/admin/users')}
-              className="flex-1 bg-pink-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
-              data-testid="manage-users-button"
-            >
-              <Users className="w-6 h-6" />
-              Manage Users
-            </button>
-            <button
-              onClick={() => navigate('/admin/analytics')}
-              className="flex-1 bg-gradient-to-r from-violet-500 to-pink-500 text-white font-black px-8 py-4 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center justify-center gap-2 uppercase"
-              data-testid="analytics-button"
-            >
-              <BarChart3 className="w-6 h-6" />
-              Analytics
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Quick Stats */}
-        {analytics && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50" data-testid="admin-dashboard">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-yellow-400 to-orange-500 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-white/80 hover:text-white mb-4 font-medium"
           >
-            <div className="bg-white neo-border neo-shadow rounded-xl p-4" data-testid="quick-dau">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5 text-violet-500" />
-                <span className="text-xs font-bold text-zinc-500 uppercase">DAU</span>
-              </div>
-              <p className="text-3xl font-black text-zinc-950">{analytics.dau}</p>
-            </div>
-            <div className="bg-white neo-border neo-shadow rounded-xl p-4" data-testid="quick-completion">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="w-5 h-5 text-green-500" />
-                <span className="text-xs font-bold text-zinc-500 uppercase">Completion</span>
-              </div>
-              <p className="text-3xl font-black text-zinc-950">{analytics.completion_rate}%</p>
-            </div>
-            <div className="bg-white neo-border neo-shadow rounded-xl p-4" data-testid="quick-score">
-              <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="w-5 h-5 text-yellow-500" />
-                <span className="text-xs font-bold text-zinc-500 uppercase">Avg Score</span>
-              </div>
-              <p className="text-3xl font-black text-zinc-950">{analytics.avg_score}</p>
-            </div>
-            <div className="bg-white neo-border neo-shadow rounded-xl p-4" data-testid="quick-retention">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-5 h-5 text-pink-500" />
-                <span className="text-xs font-bold text-zinc-500 uppercase">7d Retention</span>
-              </div>
-              <p className="text-3xl font-black text-zinc-950">{analytics.retention_7d}%</p>
-            </div>
-          </motion.div>
-        )}
-
-        <div>
-          <h2 className="text-3xl font-black text-zinc-950 mb-6">All Quizzes</h2>
+            <ArrowLeft className="w-5 h-5" />
+            {t('back')}
+          </button>
           
-          {quizzes.length === 0 ? (
-            <div className="bg-white neo-border neo-shadow rounded-2xl p-12 text-center">
-              <p className="text-xl font-bold text-zinc-600">No quizzes created yet.</p>
+          <div className="flex items-center gap-4">
+            <Crown className="w-12 h-12 text-white" />
+            <div>
+              <h1 className="text-3xl font-black text-white">{t('admin_panel')}</h1>
+              <p className="text-white/80 font-medium">
+                {language === 'zh' ? '管理您的测验应用' : 'Manage your quiz application'}
+              </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {quizzes.map((quiz, index) => (
-                <motion.div
-                  key={quiz.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                  className="bg-white neo-border neo-shadow rounded-2xl p-6 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(24,24,27,1)]"
-                  data-testid={`admin-quiz-card-${quiz.id}`}
-                >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="inline-block bg-violet-100 text-violet-700 text-xs font-bold px-3 py-1 rounded-full neo-border">
-                          {quiz.category}
-                        </span>
-                        <span className="text-sm font-bold text-zinc-600">
-                          Level {quiz.level_required}
-                        </span>
-                      </div>
-                      <h3 className="text-2xl font-black text-zinc-950 mb-1">{quiz.title}</h3>
-                      <p className="text-zinc-600 font-medium mb-2">{quiz.description}</p>
-                      <p className="text-sm font-bold text-zinc-500">
-                        {quiz.questions_count} questions • {quiz.duration_minutes} minutes
-                      </p>
-                      <p className="text-xs font-medium text-zinc-400 mt-1" data-testid={`admin-quiz-date-${quiz.id}`}>
-                        📅 Created: {new Date(quiz.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
+            <p className="text-sm font-bold text-zinc-500 mb-1">
+              {language === 'zh' ? '总用户' : 'Total Users'}
+            </p>
+            <p className="text-3xl font-black text-zinc-900">{reports?.total_users || 0}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
+            <p className="text-sm font-bold text-zinc-500 mb-1">
+              {language === 'zh' ? '完成测验' : 'Quizzes Done'}
+            </p>
+            <p className="text-3xl font-black text-zinc-900">{reports?.total_quizzes_completed || 0}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
+            <p className="text-sm font-bold text-zinc-500 mb-1">
+              {language === 'zh' ? '7天活跃' : 'Active (7d)'}
+            </p>
+            <p className="text-3xl font-black text-zinc-900">{reports?.active_users_7d || 0}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
+            <p className="text-sm font-bold text-zinc-500 mb-1">
+              {language === 'zh' ? '科目数' : 'Subjects'}
+            </p>
+            <p className="text-3xl font-black text-zinc-900">3</p>
+          </div>
+        </div>
+
+        {/* Menu Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {menuItems.map((item, index) => (
+            <motion.button
+              key={item.path}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+              onClick={() => navigate(item.path)}
+              className={`bg-white rounded-2xl p-6 border-2 border-zinc-200 text-left hover:border-${item.color}-300 hover:shadow-md transition-all group`}
+            >
+              <div className={`w-12 h-12 rounded-xl bg-${item.color}-100 flex items-center justify-center mb-4`}>
+                <item.icon className={`w-6 h-6 text-${item.color}-500`} />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900 mb-1">{item.title}</h3>
+              <p className="text-sm text-zinc-500">{item.desc}</p>
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Subject Stats */}
+        {reports?.subject_stats && (
+          <div className="bg-white rounded-2xl p-6 border-2 border-zinc-200">
+            <h3 className="text-xl font-bold text-zinc-900 mb-4">
+              {language === 'zh' ? '科目统计' : 'Subject Statistics'}
+            </h3>
+            <div className="space-y-4">
+              {reports.subject_stats.map((stat) => {
+                const icons = {
+                  'subj_bm': BookOpen,
+                  'subj_history': Landmark,
+                  'subj_science': FlaskConical
+                };
+                const Icon = icons[stat.subject.id] || BookOpen;
+                
+                return (
+                  <div key={stat.subject.id} className="flex items-center gap-4">
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${stat.subject.color}20` }}
+                    >
+                      <Icon className="w-5 h-5" style={{ color: stat.subject.color }} />
                     </div>
-                    
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => navigate(`/admin/quiz/${quiz.id}/questions`)}
-                        className="bg-violet-500 text-white font-bold px-6 py-3 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
-                        data-testid={`manage-questions-button-${quiz.id}`}
-                      >
-                        <FileQuestion className="w-5 h-5" />
-                        Questions
-                      </button>
-                      <button
-                        onClick={() => handleDelete(quiz.id)}
-                        className="bg-red-500 text-white font-bold px-6 py-3 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
-                        data-testid={`delete-quiz-button-${quiz.id}`}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                    <div className="flex-1">
+                      <p className="font-bold text-zinc-900">
+                        {language === 'zh' ? stat.subject.name_zh : stat.subject.name_en}
+                      </p>
+                      <p className="text-sm text-zinc-500">
+                        {stat.quizzes_completed} {language === 'zh' ? '次测验' : 'quizzes'} • 
+                        {stat.average_score_pct}% {language === 'zh' ? '平均分' : 'avg score'}
+                      </p>
                     </div>
                   </div>
-                </motion.div>
-              ))}
+                );
+              })}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
