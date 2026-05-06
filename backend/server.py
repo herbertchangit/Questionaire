@@ -826,6 +826,22 @@ async def get_admin_users(admin: User = Depends(get_admin_user)):
     users = await db.users.find({}, {"_id": 0, "password": 0}).limit(200).to_list(200)
     return users
 
+@api_router.get("/admin/users/{user_id}")
+async def get_admin_user_detail(user_id: str, admin: User = Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Add quiz history summary
+    quiz_count = await db.quiz_history.count_documents({"user_id": user_id})
+    recent = await db.quiz_history.find(
+        {"user_id": user_id},
+        {"_id": 0, "results": 0}
+    ).sort("completed_at", -1).limit(5).to_list(5)
+    user["recent_quiz_history"] = recent
+    user["quiz_history_count"] = quiz_count
+    return user
+
 @api_router.delete("/admin/users/{user_id}")
 async def delete_user(user_id: str, admin: User = Depends(get_admin_user)):
     if user_id == admin.id:
