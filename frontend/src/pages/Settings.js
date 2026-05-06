@@ -8,6 +8,7 @@ import {
   ArrowLeft, Lock, Save, User, School, MapPin, Calendar,
   GraduationCap, BookOpen, UserCircle, Edit3, X
 } from 'lucide-react';
+import ProfilePictureEditor from '../components/ProfilePictureEditor';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -250,6 +251,16 @@ function Settings() {
           </div>
 
           <form onSubmit={handleProfileSave} className="space-y-4">
+            {/* Profile Picture Editor */}
+            <div className="pb-2 border-b border-zinc-100">
+              <ProfilePictureEditor
+                currentSrc={profile.profile_picture}
+                name={profile.full_name || profile.username}
+                language={language}
+                onSaved={(pic) => setProfile((p) => ({ ...p, profile_picture: pic }))}
+              />
+            </div>
+
             {/* Username (read-only) */}
             <div>
               <label className="block text-sm font-bold text-zinc-700 mb-1">

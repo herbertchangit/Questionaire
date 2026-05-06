@@ -9,6 +9,7 @@ import {
   Trophy, Star, Clock, Target, LogOut, Settings, Crown, Bell, Award, TrendingUp,
   ChevronRight, Globe, Flame, Mountain, Hammer, Rocket, Lock, Cake, X
 } from 'lucide-react';
+import Avatar from '../components/Avatar';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -180,6 +181,21 @@ function Dashboard() {
               data-testid="logout-btn"
             >
               <LogOut className="w-5 h-5 text-red-500" />
+            </button>
+
+            {/* Avatar - quick access to settings */}
+            <button
+              onClick={() => navigate('/settings')}
+              className="ml-1 hover:scale-105 transition-transform"
+              title={t('settings')}
+              data-testid="header-avatar-btn"
+            >
+              <Avatar
+                src={user?.profile_picture}
+                name={user?.full_name || user?.username}
+                size={36}
+                className="ring-2 ring-violet-200"
+              />
             </button>
           </div>
         </div>

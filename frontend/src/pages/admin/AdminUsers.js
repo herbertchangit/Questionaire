@@ -9,6 +9,7 @@ import {
   Calendar, Mail, School, MapPin, GraduationCap, BookOpen, X, CheckCircle,
   ArrowUpNarrowWide, ArrowDownWideNarrow
 } from 'lucide-react';
+import Avatar from '../../components/Avatar';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -222,9 +223,11 @@ function AdminUsers() {
                 data-testid={`user-row-${user.username}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shrink-0">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
+                  <Avatar
+                    src={user.profile_picture}
+                    name={user.full_name || user.username}
+                    size={48}
+                  />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -301,9 +304,12 @@ function AdminUsers() {
             >
               <div className="sticky top-0 bg-gradient-to-r from-violet-500 to-pink-500 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
+                  <Avatar
+                    src={selectedUser.profile_picture}
+                    name={selectedUser.full_name || selectedUser.username}
+                    size={48}
+                    className="ring-2 ring-white/40"
+                  />
                   <div className="min-w-0">
                     <h3 className="font-black text-white text-lg truncate">
                       {selectedUser.full_name || selectedUser.username}

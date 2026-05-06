@@ -73,6 +73,7 @@ class User(BaseModel):
     latest_marks: Dict[str, int] = {}
     role: str = "user"
     language: str = "en"
+    profile_picture: Optional[str] = None  # base64 data URL
     total_points: int = 0
     current_level: int = 1
     stages_completed: List[str] = []
@@ -81,6 +82,9 @@ class User(BaseModel):
     last_login_at: Optional[str] = None
     previous_login_at: Optional[str] = None
     created_at: str
+
+class ProfilePictureUpdate(BaseModel):
+    profile_picture: Optional[str] = None  # base64 data URL or null to clear
 
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -346,6 +350,25 @@ async def update_profile(profile_data: UserProfileUpdate, current_user: User = D
 async def get_profile(current_user: User = Depends(get_current_user)):
     user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password": 0})
     return user
+
+@api_router.put("/user/profile/picture")
+async def update_profile_picture(
+    payload: ProfilePictureUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    pic = payload.profile_picture
+    if pic:
+        if not pic.startswith("data:image/"):
+            raise HTTPException(status_code=400, detail="Image must be a data URL")
+        # Reject payloads larger than ~700 KB (Mongo doc size + binary safety)
+        if len(pic) > 750_000:
+            raise HTTPException(status_code=413, detail="Image too large. Max 500KB.")
+    
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"profile_picture": pic}}
+    )
+    return {"message": "Profile picture updated", "profile_picture": pic}
 
 @api_router.post("/user/change-password")
 async def change_password(data: PasswordChange, current_user: User = Depends(get_current_user)):
