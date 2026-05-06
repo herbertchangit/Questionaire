@@ -87,6 +87,7 @@ class UserProfileUpdate(BaseModel):
     current_grade: Optional[int] = None
     date_of_birth: Optional[str] = None
     latest_marks: Optional[LatestMarks] = None
+    language: Optional[str] = None
 
 class PasswordChange(BaseModel):
     current_password: str
@@ -316,6 +317,10 @@ async def update_profile(profile_data: UserProfileUpdate, current_user: User = D
             "sejarah": marks.sejarah,
             "science": marks.science
         }
+    if profile_data.language:
+        if profile_data.language not in ["en", "zh"]:
+            raise HTTPException(status_code=400, detail="Invalid language. Use 'en' or 'zh'")
+        update_fields["language"] = profile_data.language
     
     if update_fields:
         await db.users.update_one(

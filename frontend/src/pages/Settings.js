@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import {
-  ArrowLeft, Globe, Lock, Save, User, School, MapPin, Calendar,
+  ArrowLeft, Lock, Save, User, School, MapPin, Calendar,
   GraduationCap, BookOpen, UserCircle, Edit3, X
 } from 'lucide-react';
 
@@ -22,7 +22,7 @@ function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, persistLanguage, t } = useLanguage();
 
   useEffect(() => {
     fetchProfile();
@@ -45,6 +45,7 @@ function Settings() {
         town: r.data.town || '',
         current_grade: r.data.current_grade || 1,
         date_of_birth: r.data.date_of_birth || '',
+        language: r.data.language || 'en',
         latest_marks: {
           bm: r.data.latest_marks?.bm ?? 0,
           sejarah: r.data.latest_marks?.sejarah ?? 0,
@@ -118,6 +119,7 @@ function Settings() {
           town: profileForm.town.trim(),
           current_grade: profileForm.current_grade,
           date_of_birth: profileForm.date_of_birth,
+          language: profileForm.language,
           latest_marks: {
             bm: parseInt(profileForm.latest_marks.bm) || 0,
             sejarah: parseInt(profileForm.latest_marks.sejarah) || 0,
@@ -126,6 +128,8 @@ function Settings() {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      // Apply newly-saved language across the app
+      persistLanguage(profileForm.language);
       toast.success(language === 'zh' ? '个人资料已更新' : 'Profile updated');
       await fetchProfile();
       setEditing(false);
@@ -133,21 +137,6 @@ function Settings() {
       toast.error(err.response?.data?.detail || (language === 'zh' ? '更新失败' : 'Update failed'));
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const handleLanguageChange = async (newLang) => {
-    const token = localStorage.getItem('token');
-    try {
-      await axios.put(
-        `${API_URL}/api/user/language`,
-        { language: newLang },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setLanguage(newLang);
-      toast.success(language === 'zh' ? '语言已更新' : 'Language updated');
-    } catch (error) {
-      toast.error('Failed to update language');
     }
   };
 
@@ -399,6 +388,44 @@ function Settings() {
               )}
             </div>
 
+            {/* Language (part of profile) */}
+            <div>
+              <label className="block text-sm font-bold text-zinc-700 mb-1">
+                {language === 'zh' ? '语言' : 'Language'} *
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={!editing}
+                  onClick={() => updateProfileField('language', 'en')}
+                  data-testid="profile-lang-en"
+                  className={`py-2.5 px-4 rounded-xl font-bold border-2 transition-colors text-sm ${
+                    profileForm.language === 'en'
+                      ? 'bg-violet-500 text-white border-violet-500'
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:border-violet-300'
+                  } ${!editing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  disabled={!editing}
+                  onClick={() => updateProfileField('language', 'zh')}
+                  data-testid="profile-lang-zh"
+                  className={`py-2.5 px-4 rounded-xl font-bold border-2 transition-colors text-sm ${
+                    profileForm.language === 'zh'
+                      ? 'bg-violet-500 text-white border-violet-500'
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:border-violet-300'
+                  } ${!editing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  中文
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">
+                {language === 'zh' ? '下次登录时自动使用所选语言' : 'Will be your default language on next login'}
+              </p>
+            </div>
+
             {/* Latest Marks */}
             <div className="pt-2 border-t border-zinc-100">
               <p className="text-sm font-bold text-zinc-700 mb-3">
@@ -423,41 +450,6 @@ function Settings() {
               </button>
             )}
           </form>
-        </motion.div>
-
-        {/* Language Setting */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 border-2 border-zinc-200"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <Globe className="w-6 h-6 text-violet-500" />
-            <h2 className="text-xl font-bold text-zinc-900">{t('language')}</h2>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleLanguageChange('en')}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold border-2 transition-colors ${
-                language === 'en'
-                  ? 'bg-violet-500 text-white border-violet-500'
-                  : 'bg-white text-zinc-700 border-zinc-200 hover:border-violet-300'
-              }`}
-            >
-              English
-            </button>
-            <button
-              onClick={() => handleLanguageChange('zh')}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold border-2 transition-colors ${
-                language === 'zh'
-                  ? 'bg-violet-500 text-white border-violet-500'
-                  : 'bg-white text-zinc-700 border-zinc-200 hover:border-violet-300'
-              }`}
-            >
-              中文
-            </button>
-          </div>
         </motion.div>
 
         {/* Password Change */}

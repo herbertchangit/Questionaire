@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
 const translations = {
   en: {
@@ -267,8 +268,15 @@ const translations = {
 
 const LanguageContext = createContext();
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 export function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState(() => {
+  const [language, setLanguageState] = useState(() => {
+    // Prefer the language stored on the logged-in user object; fall back to localStorage
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      if (u?.language) return u.language;
+    } catch (e) {}
     const saved = localStorage.getItem('language');
     return saved || 'en';
   });
@@ -281,12 +289,39 @@ export function LanguageProvider({ children }) {
     return translations[language]?.[key] || translations['en'][key] || key;
   };
 
+  // Local-only setter (used right after login to sync state with server-saved value)
+  const setLanguage = (lang) => {
+    setLanguageState(lang);
+  };
+
+  // Persist the selected language to the backend if the user is logged in
+  const persistLanguage = async (lang) => {
+    setLanguageState(lang);
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      await axios.put(
+        `${API_URL}/api/user/language`,
+        { language: lang },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Keep cached user object in sync
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      if (u) {
+        u.language = lang;
+        localStorage.setItem('user', JSON.stringify(u));
+      }
+    } catch (e) {
+      // Non-fatal - state still updated locally
+    }
+  };
+
   const toggleLanguage = () => {
-    setLanguage(prev => prev === 'en' ? 'zh' : 'en');
+    persistLanguage(language === 'en' ? 'zh' : 'en');
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, persistLanguage, toggleLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );

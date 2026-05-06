@@ -16,7 +16,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
-  const { language, toggleLanguage, t } = useLanguage();
+  const { language, toggleLanguage, t, setLanguage } = useLanguage();
 
   // Load saved username if remember me was checked
   useEffect(() => {
@@ -70,6 +70,11 @@ function Login() {
       
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      // Apply user's saved language as the default
+      if (response.data.user?.language && ['en', 'zh'].includes(response.data.user.language)) {
+        setLanguage(response.data.user.language);
+      }
       
       toast.success(response.data.message || (language === 'zh' ? '登录成功!' : 'Login successful!'));
       
