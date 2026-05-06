@@ -4,9 +4,43 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
-import { ArrowLeft, Plus, Upload, Trash2, Edit, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+// Compress image to max 640x640 JPEG ~0.85
+async function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 640;
+        const ratio = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+        const w = Math.round(img.naturalWidth * ratio);
+        const h = Math.round(img.naturalHeight * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = ev.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => resolve(ev.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 function ManageQuestions() {
   const [questions, setQuestions] = useState([]);
@@ -23,7 +57,9 @@ function ManageQuestions() {
     options_en: ['', '', '', ''],
     options_zh: ['', '', '', ''],
     correct_answer: 0,
-    points: 10
+    points: 10,
+    image: null,
+    audio: null
   });
   const navigate = useNavigate();
   const { language, t } = useLanguage();
@@ -102,10 +138,48 @@ function ManageQuestions() {
       options_en: question.options_en,
       options_zh: question.options_zh,
       correct_answer: question.correct_answer,
-      points: question.points
+      points: question.points,
+      image: question.image || null,
+      audio: question.audio || null
     });
     setEditingId(question.id);
     setShowForm(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image');
+      return;
+    }
+    try {
+      const dataUrl = await compressImage(file);
+      setFormData((prev) => ({ ...prev, image: dataUrl }));
+    } catch (err) {
+      toast.error('Image processing failed');
+    }
+  };
+
+  const handleAudioUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      toast.error('Please select an audio file');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error('Audio too large (max 3MB). Please compress it.');
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setFormData((prev) => ({ ...prev, audio: dataUrl }));
+    } catch (err) {
+      toast.error('Audio read failed');
+    }
   };
 
   const handleBulkUpload = async (e) => {
@@ -144,7 +218,9 @@ function ManageQuestions() {
       options_en: ['', '', '', ''],
       options_zh: ['', '', '', ''],
       correct_answer: 0,
-      points: 10
+      points: 10,
+      image: null,
+      audio: null
     });
   };
 
@@ -221,19 +297,49 @@ function ManageQuestions() {
                 transition={{ delay: 0.02 * i }}
                 className="bg-white rounded-xl p-4 border-2 border-zinc-200"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex gap-2 mb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex gap-2 mb-2 flex-wrap">
                       <span className="text-xs font-bold bg-violet-100 text-violet-700 px-2 py-1 rounded">
                         {subjects.find(s => s.id === q.subject_id)?.name}
                       </span>
                       <span className="text-xs font-bold bg-zinc-100 text-zinc-600 px-2 py-1 rounded">
                         L{q.level_num} S{q.stage_num}
                       </span>
+                      {q.image && (
+                        <span
+                          className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1"
+                          data-testid={`badge-image-${q.id}`}
+                        >
+                          <ImageIcon className="w-3 h-3" /> Image
+                        </span>
+                      )}
+                      {q.audio && (
+                        <span
+                          className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1"
+                          data-testid={`badge-audio-${q.id}`}
+                        >
+                          <Music className="w-3 h-3" /> Audio
+                        </span>
+                      )}
                     </div>
                     <p className="font-medium text-zinc-900">{language === 'zh' ? q.text_zh : q.text_en}</p>
+                    {(q.image || q.audio) && (
+                      <div className="mt-2 flex items-center gap-3">
+                        {q.image && (
+                          <img
+                            src={q.image}
+                            alt="thumb"
+                            className="w-16 h-16 object-cover rounded-lg border border-zinc-200"
+                          />
+                        )}
+                        {q.audio && (
+                          <audio controls src={q.audio} className="max-w-xs h-8" />
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => handleEdit(q)}
                       className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
@@ -379,6 +485,96 @@ function ManageQuestions() {
                     className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
                     min={1}
                   />
+                </div>
+              </div>
+
+              {/* Media attachments */}
+              <div className="border-t border-zinc-100 pt-4">
+                <p className="text-sm font-bold text-zinc-700 mb-3">
+                  {language === 'zh' ? '媒体附件 (可选)' : 'Media Attachments (optional)'}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Image */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold mb-2 text-zinc-700">
+                      <ImageIcon className="w-4 h-4" />
+                      {language === 'zh' ? '图片' : 'Image'}
+                    </label>
+                    {formData.image ? (
+                      <div className="relative border-2 border-zinc-200 rounded-lg overflow-hidden">
+                        <img
+                          src={formData.image}
+                          alt="preview"
+                          className="w-full h-40 object-contain bg-zinc-50"
+                          data-testid="question-image-preview"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, image: null })}
+                          className="absolute top-1 right-1 bg-white/90 hover:bg-white p-1 rounded shadow"
+                          data-testid="remove-question-image"
+                        >
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-zinc-300 rounded-lg h-40 flex flex-col items-center justify-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
+                        <Upload className="w-6 h-6 text-zinc-400 mb-1" />
+                        <span className="text-sm font-medium text-zinc-500">
+                          {language === 'zh' ? '点击上传图片' : 'Click to upload image'}
+                        </span>
+                        <span className="text-xs text-zinc-400 mt-1">Max ~1MB · auto-compressed</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                          data-testid="question-image-input"
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Audio */}
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold mb-2 text-zinc-700">
+                      <Music className="w-4 h-4" />
+                      {language === 'zh' ? '音频' : 'Audio'}
+                    </label>
+                    {formData.audio ? (
+                      <div className="border-2 border-zinc-200 rounded-lg p-3 bg-zinc-50">
+                        <audio
+                          controls
+                          src={formData.audio}
+                          className="w-full"
+                          data-testid="question-audio-preview"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, audio: null })}
+                          className="mt-2 text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1"
+                          data-testid="remove-question-audio"
+                        >
+                          <X className="w-3 h-3" /> Remove audio
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-zinc-300 rounded-lg h-40 flex flex-col items-center justify-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
+                        <Music className="w-6 h-6 text-zinc-400 mb-1" />
+                        <span className="text-sm font-medium text-zinc-500">
+                          {language === 'zh' ? '点击上传音频' : 'Click to upload audio'}
+                        </span>
+                        <span className="text-xs text-zinc-400 mt-1">MP3/WAV · Max 3MB</span>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={handleAudioUpload}
+                          data-testid="question-audio-input"
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
               </div>
 

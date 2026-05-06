@@ -168,9 +168,27 @@ function PlayPage() {
             transition={{ duration: 0.3 }}
           >
             <div className="bg-white rounded-2xl p-6 border-2 border-zinc-200 shadow-sm mb-6">
-              <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-6" data-testid="question-text">
+              <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-4" data-testid="question-text">
                 {language === 'zh' ? currentQuestion?.text_zh : currentQuestion?.text_en}
               </h2>
+
+              {/* Attached media */}
+              {currentQuestion?.image && (
+                <img
+                  src={currentQuestion.image}
+                  alt=""
+                  className="w-full max-h-72 object-contain rounded-xl bg-zinc-50 mb-4"
+                  data-testid="question-image"
+                />
+              )}
+              {currentQuestion?.audio && (
+                <audio
+                  controls
+                  src={currentQuestion.audio}
+                  className="w-full mb-4"
+                  data-testid="question-audio"
+                />
+              )}
 
               <div className="space-y-3">
                 {(language === 'zh' ? currentQuestion?.options_zh : currentQuestion?.options_en)?.map((option, index) => {

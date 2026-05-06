@@ -353,9 +353,25 @@ function LiveRoom() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl p-6 border-2 border-zinc-200 mb-4"
             >
-              <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-6" data-testid="live-question-text">
+              <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-4" data-testid="live-question-text">
                 {language === 'zh' ? question?.text_zh : question?.text_en}
               </h2>
+              {question?.image && (
+                <img
+                  src={question.image}
+                  alt=""
+                  className="w-full max-h-64 object-contain rounded-xl bg-zinc-50 mb-4"
+                  data-testid="live-question-image"
+                />
+              )}
+              {question?.audio && (
+                <audio
+                  controls
+                  src={question.audio}
+                  className="w-full mb-4"
+                  data-testid="live-question-audio"
+                />
+              )}
               <div className="space-y-3">
                 {optionsList?.map((opt, idx) => {
                   const isSelected = selectedAnswer === idx;

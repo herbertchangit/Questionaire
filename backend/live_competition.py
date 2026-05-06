@@ -428,6 +428,8 @@ async def run_question(state: RoomState, q_index: int):
             "options_zh": q["options_zh"],
             "subject_id": q.get("subject_id"),
             "points": q.get("points", 10),
+            "image": q.get("image"),
+            "audio": q.get("audio"),
         },
         "time_per_question": time_per_q,
         "started_at": state.q_started_at.isoformat(),

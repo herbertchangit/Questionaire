@@ -116,6 +116,8 @@ class QuestionCreate(BaseModel):
     options_zh: List[str]
     correct_answer: int
     points: int = 10
+    image: Optional[str] = None  # data:image/... base64, max ~1MB
+    audio: Optional[str] = None  # data:audio/... base64, max ~3MB
 
 class NoticeCreate(BaseModel):
     title_en: str
@@ -717,8 +719,24 @@ async def get_admin_questions(
     questions = await db.edu_questions.find(query, {"_id": 0}).limit(500).to_list(500)
     return questions
 
+def _validate_question_media(image: Optional[str], audio: Optional[str]):
+    """Validate that image/audio are data URLs within size limits."""
+    if image:
+        if not image.startswith("data:image/"):
+            raise HTTPException(status_code=400, detail="Image must be a data URL")
+        if len(image) > 1_500_000:  # ~1.1 MB binary
+            raise HTTPException(status_code=413, detail="Image too large. Max ~1MB.")
+    if audio:
+        if not audio.startswith("data:audio/"):
+            raise HTTPException(status_code=400, detail="Audio must be a data URL")
+        if len(audio) > 4_500_000:  # ~3.3 MB binary
+            raise HTTPException(status_code=413, detail="Audio too large. Max ~3MB.")
+
 @api_router.post("/admin/questions")
 async def create_question(question: QuestionCreate, admin: User = Depends(get_admin_user)):
+    # Validate media payloads
+    _validate_question_media(question.image, question.audio)
+    
     stage_id = f"stage_{question.subject_id}_level_{question.level_num}_{question.stage_num}"
     
     question_doc = {
@@ -733,6 +751,8 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
         "options_zh": question.options_zh,
         "correct_answer": question.correct_answer,
         "points": question.points,
+        "image": question.image,
+        "audio": question.audio,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": admin.id
     }
@@ -742,6 +762,7 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
 
 @api_router.put("/admin/questions/{question_id}")
 async def update_question(question_id: str, question: QuestionCreate, admin: User = Depends(get_admin_user)):
+    _validate_question_media(question.image, question.audio)
     result = await db.edu_questions.update_one(
         {"id": question_id},
         {"$set": {
@@ -751,6 +772,8 @@ async def update_question(question_id: str, question: QuestionCreate, admin: Use
             "options_zh": question.options_zh,
             "correct_answer": question.correct_answer,
             "points": question.points,
+            "image": question.image,
+            "audio": question.audio,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
