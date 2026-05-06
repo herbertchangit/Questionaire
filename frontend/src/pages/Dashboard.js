@@ -192,9 +192,28 @@ function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl md:text-4xl font-black text-zinc-900 mb-2" data-testid="welcome-title">
-            {t('welcome_back')}, {user?.full_name || user?.username}! 👋
-          </h1>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <h1 className="text-3xl md:text-4xl font-black text-zinc-900 mb-2" data-testid="welcome-title">
+              {t('welcome_back')}, {user?.full_name || user?.username}! 👋
+            </h1>
+            {user?.previous_login_at && (
+              <div
+                className="text-sm md:text-base font-medium text-zinc-500 flex items-center gap-1.5 mt-2 md:mt-3"
+                data-testid="last-login-display"
+              >
+                <Clock className="w-4 h-4 text-zinc-400" />
+                <span>
+                  {language === 'zh' ? '上次登录:' : 'Last login:'}{' '}
+                  <span className="text-zinc-700">
+                    {new Date(user.previous_login_at).toLocaleString(
+                      language === 'zh' ? 'zh-CN' : 'en-US',
+                      { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                    )}
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
           {welcomeMsg && (
             <p className="text-zinc-600 font-medium">
               {language === 'zh' ? welcomeMsg.message_zh : welcomeMsg.message_en}

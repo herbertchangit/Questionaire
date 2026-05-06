@@ -78,6 +78,8 @@ class User(BaseModel):
     stages_completed: List[str] = []
     total_time_spent: int = 0
     quizzes_completed: int = 0
+    last_login_at: Optional[str] = None
+    previous_login_at: Optional[str] = None
     created_at: str
 
 class UserProfileUpdate(BaseModel):
@@ -259,6 +261,16 @@ async def login(credentials: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     await log_activity(user["id"], "login")
+    
+    # Track login timestamps: previous_login_at = old last_login_at, last_login_at = now
+    now_iso = datetime.now(timezone.utc).isoformat()
+    previous_login = user.get("last_login_at")
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"previous_login_at": previous_login, "last_login_at": now_iso}}
+    )
+    user["previous_login_at"] = previous_login
+    user["last_login_at"] = now_iso
     
     token = create_token(user["id"], user["username"], user["role"], credentials.remember_me)
     user_response = {k: v for k, v in user.items() if k != "password"}
