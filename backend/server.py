@@ -85,6 +85,7 @@ class UserProfileUpdate(BaseModel):
     school_name: Optional[str] = None
     town: Optional[str] = None
     current_grade: Optional[int] = None
+    date_of_birth: Optional[str] = None
     latest_marks: Optional[LatestMarks] = None
 
 class PasswordChange(BaseModel):
@@ -299,6 +300,15 @@ async def update_profile(profile_data: UserProfileUpdate, current_user: User = D
         if not (1 <= profile_data.current_grade <= 6):
             raise HTTPException(status_code=400, detail="Grade must be between 1 and 6")
         update_fields["current_grade"] = profile_data.current_grade
+    if profile_data.date_of_birth:
+        try:
+            dob = datetime.strptime(profile_data.date_of_birth, "%Y-%m-%d")
+            age = (datetime.now() - dob).days // 365
+            if age < 10 or age > 20:
+                raise HTTPException(status_code=400, detail="Age must be between 10-20 years")
+            update_fields["date_of_birth"] = profile_data.date_of_birth
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     if profile_data.latest_marks:
         marks = profile_data.latest_marks
         update_fields["latest_marks"] = {
