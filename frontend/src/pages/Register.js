@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   User, Lock, UserPlus, Globe, Award, Eye, EyeOff, 
-  School, MapPin, Calendar, BookOpen, GraduationCap
+  School, MapPin, Calendar, BookOpen, GraduationCap, Mail
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -15,6 +15,7 @@ function Register() {
   const [step, setStep] = useState(1); // Multi-step form
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
     password: '',
     confirmPassword: '',
     full_name: '',
@@ -61,14 +62,30 @@ function Register() {
 
   const validateStep1 = () => {
     const newErrors = {};
+    const PLAIN_RE = /^[a-zA-Z0-9_]{3,30}$/;
+    const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     
-    // Username validation
-    if (!formData.username.trim()) {
+    // Username validation - allow plain or email format
+    const u = formData.username.trim();
+    if (!u) {
       newErrors.username = language === 'zh' ? '请输入用户名' : 'Username is required';
-    } else if (formData.username.length < 3) {
-      newErrors.username = language === 'zh' ? '用户名至少3个字符' : 'Username must be at least 3 characters';
-    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      newErrors.username = language === 'zh' ? '用户名只能包含字母、数字和下划线' : 'Username can only contain letters, numbers, and underscores';
+    } else if (!PLAIN_RE.test(u) && !EMAIL_RE.test(u)) {
+      newErrors.username = language === 'zh'
+        ? '用户名必须是 3-30 个字母/数字/下划线,或有效的电子邮件'
+        : 'Use 3-30 letters/numbers/underscores OR a valid email address';
+    }
+    
+    // Email validation - always required
+    const e = formData.email.trim();
+    if (!e) {
+      newErrors.email = language === 'zh' ? '请输入电子邮件' : 'Email is required';
+    } else if (!EMAIL_RE.test(e)) {
+      newErrors.email = language === 'zh' ? '请输入有效的电子邮件' : 'Enter a valid email address';
+    } else if (EMAIL_RE.test(u) && u.toLowerCase() !== e.toLowerCase()) {
+      // If username is email-format, it must equal the email field
+      newErrors.username = language === 'zh'
+        ? '用户名为电子邮件时必须与电子邮件字段相同'
+        : 'When username is an email, it must match the Email field';
     }
     
     // Password validation
@@ -149,7 +166,8 @@ function Register() {
 
     try {
       const response = await axios.post(`${API_URL}/api/auth/register`, {
-        username: formData.username.toLowerCase(),
+        username: formData.username.toLowerCase().trim(),
+        email: formData.email.toLowerCase().trim(),
         password: formData.password,
         full_name: formData.full_name,
         school_name: formData.school_name,
@@ -257,11 +275,34 @@ function Register() {
                       className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
                         errors.username ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
                       }`}
-                      placeholder={language === 'zh' ? '选择用户名' : 'Choose a username'}
+                      placeholder={language === 'zh' ? '用户名或电子邮件' : 'Username or email'}
                       data-testid="username-input"
                     />
                   </div>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {language === 'zh' ? '可以是字母数字组合或电子邮件地址' : 'Letters/numbers/underscore OR an email address'}
+                  </p>
                   {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-zinc-700 mb-1">
+                    {language === 'zh' ? '电子邮件' : 'Email'} *
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => updateFormData('email', e.target.value)}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
+                        errors.email ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
+                      }`}
+                      placeholder="you@school.edu"
+                      data-testid="email-input"
+                    />
+                  </div>
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
 
                 <div>

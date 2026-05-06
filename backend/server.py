@@ -44,7 +44,8 @@ class LatestMarks(BaseModel):
     science: int = Field(ge=0, le=100, default=0)
 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=30)
+    username: str = Field(min_length=3, max_length=100)
+    email: EmailStr
     password: str = Field(min_length=6, max_length=100)
     full_name: str = Field(min_length=2, max_length=100)
     school_name: str = Field(min_length=2, max_length=200)
@@ -55,7 +56,7 @@ class UserCreate(BaseModel):
     language: str = "en"
 
 class UserLogin(BaseModel):
-    username: str
+    username: str  # accepts either username OR email
     password: str
     remember_me: bool = False
 
@@ -63,6 +64,7 @@ class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     username: str
+    email: Optional[str] = None
     full_name: str
     school_name: str
     town: str
@@ -157,23 +159,43 @@ async def log_activity(user_id: str, action: str, metadata: dict = None):
 
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate):
-    # Validate username format (alphanumeric and underscore only)
     import re
-    if not re.match(r'^[a-zA-Z0-9_]+$', user_data.username):
+    # Username validation: allow plain (letters/numbers/_) OR email-format
+    username_raw = user_data.username.strip()
+    plain_re = r'^[a-zA-Z0-9_]{3,30}$'
+    email_re = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+    if not (re.match(plain_re, username_raw) or re.match(email_re, username_raw)):
         raise HTTPException(
-            status_code=400, 
-            detail="Username can only contain letters, numbers, and underscores"
+            status_code=400,
+            detail="Username must be 3-30 letters/numbers/underscores OR a valid email address"
         )
     
-    # Check if username already exists
-    existing_username = await db.users.find_one({"username": user_data.username.lower()}, {"_id": 0})
+    username = username_raw.lower()
+    email = user_data.email.lower()
+    
+    # Check uniqueness for username
+    existing_username = await db.users.find_one({"username": username}, {"_id": 0})
     if existing_username:
         raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Check uniqueness for email (across email field and username field — since username can be email)
+    existing_email = await db.users.find_one(
+        {"$or": [{"email": email}, {"username": email}]},
+        {"_id": 0}
+    )
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # If username itself is email-format, ensure it matches the provided email
+    if re.match(email_re, username) and username != email:
+        raise HTTPException(
+            status_code=400,
+            detail="When using email as username, it must match your email address"
+        )
     
     # Validate date of birth format
     try:
         dob = datetime.strptime(user_data.date_of_birth, "%Y-%m-%d")
-        # Check if user is between 10-20 years old (typical secondary school age)
         age = (datetime.now() - dob).days // 365
         if age < 10 or age > 20:
             raise HTTPException(status_code=400, detail="Age must be between 10-20 years for secondary school")
@@ -190,7 +212,8 @@ async def register(user_data: UserCreate):
     
     user_doc = {
         "id": user_id,
-        "username": user_data.username.lower(),
+        "username": username,
+        "email": email,
         "password": hashed_password,
         "full_name": user_data.full_name,
         "school_name": user_data.school_name,
@@ -213,15 +236,19 @@ async def register(user_data: UserCreate):
     }
     
     await db.users.insert_one(user_doc)
-    token = create_token(user_id, user_data.username.lower(), "user", False)
+    token = create_token(user_id, username, "user", False)
     
-    user_response = {k: v for k, v in user_doc.items() if k != "password"}
+    user_response = {k: v for k, v in user_doc.items() if k not in ("password", "_id")}
     return {"token": token, "user": user_response, "message": "Registration successful"}
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
-    # Find user by username (case-insensitive)
-    user = await db.users.find_one({"username": credentials.username.lower()}, {"_id": 0})
+    # Accept either username or email - look up by both
+    identifier = credentials.username.strip().lower()
+    user = await db.users.find_one(
+        {"$or": [{"username": identifier}, {"email": identifier}]},
+        {"_id": 0}
+    )
     
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")

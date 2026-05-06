@@ -31,9 +31,9 @@ function Login() {
     const newErrors = {};
     
     if (!username.trim()) {
-      newErrors.username = language === 'zh' ? '请输入用户名' : 'Username is required';
-    } else if (username.length < 3) {
-      newErrors.username = language === 'zh' ? '用户名至少3个字符' : 'Username must be at least 3 characters';
+      newErrors.username = language === 'zh' ? '请输入用户名或电子邮件' : 'Username or email is required';
+    } else if (username.trim().length < 3) {
+      newErrors.username = language === 'zh' ? '至少3个字符' : 'Must be at least 3 characters';
     }
     
     if (!password) {
@@ -56,14 +56,14 @@ function Login() {
 
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, {
-        username: username.toLowerCase(),
+        username: username.trim().toLowerCase(),
         password,
         remember_me: rememberMe
       });
       
       // Save or clear remembered username
       if (rememberMe) {
-        localStorage.setItem('rememberedUsername', username.toLowerCase());
+        localStorage.setItem('rememberedUsername', username.trim().toLowerCase());
       } else {
         localStorage.removeItem('rememberedUsername');
       }
@@ -127,7 +127,7 @@ function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-zinc-700 mb-2">
-                {language === 'zh' ? '用户名' : 'Username'}
+                {language === 'zh' ? '用户名或电子邮件' : 'Username or Email'}
               </label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
@@ -138,7 +138,7 @@ function Login() {
                   className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 focus:outline-none font-medium ${
                     errors.username ? 'border-red-300 focus:border-red-500' : 'border-zinc-200 focus:border-violet-500'
                   }`}
-                  placeholder={language === 'zh' ? '输入用户名' : 'Enter username'}
+                  placeholder={language === 'zh' ? '用户名或邮箱' : 'Username or email'}
                   data-testid="username-input"
                 />
               </div>
