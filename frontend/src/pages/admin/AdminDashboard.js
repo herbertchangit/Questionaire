@@ -6,20 +6,32 @@ import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   ArrowLeft, Crown, FileQuestion, Users, Bell, BarChart3, 
-  BookOpen, Landmark, FlaskConical, Trophy
+  BookOpen, Landmark, FlaskConical, Trophy, Clock
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 function AdminDashboard() {
   const [reports, setReports] = useState(null);
+  const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { language, t } = useLanguage();
 
   useEffect(() => {
     fetchReports();
+    fetchMe();
   }, []);
+
+  const fetchMe = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const r = await axios.get(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMe(r.data);
+    } catch (e) {}
+  };
 
   const fetchReports = async () => {
     const token = localStorage.getItem('token');
@@ -94,14 +106,33 @@ function AdminDashboard() {
             {t('back')}
           </button>
           
-          <div className="flex items-center gap-4">
-            <Crown className="w-12 h-12 text-white" />
-            <div>
-              <h1 className="text-3xl font-black text-white">{t('admin_panel')}</h1>
-              <p className="text-white/80 font-medium">
-                {language === 'zh' ? '管理您的测验应用' : 'Manage your quiz application'}
-              </p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-4">
+              <Crown className="w-12 h-12 text-white" />
+              <div>
+                <h1 className="text-3xl font-black text-white">{t('admin_panel')}</h1>
+                <p className="text-white/80 font-medium">
+                  {language === 'zh' ? '管理您的测验应用' : 'Manage your quiz application'}
+                </p>
+              </div>
             </div>
+            {me?.previous_login_at && (
+              <div
+                className="flex items-center gap-1.5 text-sm md:text-base text-white/90 bg-white/15 backdrop-blur-sm px-3 py-2 rounded-xl"
+                data-testid="admin-last-login-display"
+              >
+                <Clock className="w-4 h-4" />
+                <span>
+                  {language === 'zh' ? '上次登录:' : 'Last login:'}{' '}
+                  <span className="font-bold">
+                    {new Date(me.previous_login_at).toLocaleString(
+                      language === 'zh' ? 'zh-CN' : 'en-US',
+                      { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                    )}
+                  </span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </header>

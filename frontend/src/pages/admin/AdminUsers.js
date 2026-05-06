@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
-import { ArrowLeft, Trash2, User, Star, Trophy } from 'lucide-react';
+import { ArrowLeft, Trash2, User, Star, Trophy, Clock } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -81,16 +81,28 @@ function AdminUsers() {
                     <User className="w-6 h-6 text-white" />
                   </div>
                   
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-zinc-900">{user.name}</h3>
+                      <h3 className="font-bold text-zinc-900 truncate">{user.full_name || user.username}</h3>
                       {user.role === 'admin' && (
                         <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">
                           Admin
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-zinc-500">{user.email}</p>
+                    <p className="text-sm text-zinc-500 truncate">@{user.username}{user.email ? ` · ${user.email}` : ''}</p>
+                    <div className="flex items-center gap-1 text-xs text-zinc-400 mt-1" data-testid={`user-last-login-${user.id}`}>
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        {language === 'zh' ? '上次登录:' : 'Last login:'}{' '}
+                        {user.last_login_at
+                          ? new Date(user.last_login_at).toLocaleString(
+                              language === 'zh' ? 'zh-CN' : 'en-US',
+                              { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                            )
+                          : (language === 'zh' ? '从未' : 'Never')}
+                      </span>
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-4 text-sm">
@@ -106,7 +118,7 @@ function AdminUsers() {
                   
                   {user.role !== 'admin' && (
                     <button
-                      onClick={() => handleDelete(user.id, user.name)}
+                      onClick={() => handleDelete(user.id, user.full_name || user.username)}
                       className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
                     >
                       <Trash2 className="w-5 h-5" />
