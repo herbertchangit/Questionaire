@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import confetti from 'canvas-confetti';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   Trophy, Star, Clock, Target, LogOut, Settings, Crown, Bell, Award, TrendingUp,
-  ChevronRight, Globe, Flame, Mountain, Hammer, Rocket, Lock
+  ChevronRight, Globe, Flame, Mountain, Hammer, Rocket, Lock, Cake, X
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -31,12 +32,37 @@ function Dashboard() {
   const [welcomeMsg, setWelcomeMsg] = useState(null);
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showBirthday, setShowBirthday] = useState(false);
   const navigate = useNavigate();
   const { language, toggleLanguage, t } = useLanguage();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Detect birthday after user loads
+  useEffect(() => {
+    if (!user?.date_of_birth) return;
+    const today = new Date();
+    const todayKey = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const dobKey = user.date_of_birth.slice(5); // "YYYY-MM-DD" -> "MM-DD"
+    if (todayKey !== dobKey) return;
+
+    // Avoid spamming confetti more than once per day
+    const seenKey = `birthday_seen_${user.id}_${today.getFullYear()}`;
+    const alreadyCelebrated = localStorage.getItem(seenKey);
+    setShowBirthday(true);
+    if (!alreadyCelebrated) {
+      // Fire celebration confetti volley
+      const fire = (delay, opts) => setTimeout(() => {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.4 }, ...opts });
+      }, delay);
+      fire(300, { angle: 60, origin: { x: 0, y: 0.5 } });
+      fire(600, { angle: 120, origin: { x: 1, y: 0.5 } });
+      fire(900, { particleCount: 120, spread: 100, origin: { y: 0.3 } });
+      localStorage.setItem(seenKey, '1');
+    }
+  }, [user]);
 
   const fetchData = async () => {
     const token = localStorage.getItem('token');
@@ -175,6 +201,45 @@ function Dashboard() {
             </p>
           )}
         </motion.div>
+
+        {/* Birthday Banner */}
+        {showBirthday && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.5, type: 'spring' }}
+            className="relative mb-6 overflow-hidden rounded-2xl border-2 border-pink-300 bg-gradient-to-r from-pink-100 via-yellow-100 to-violet-100 p-5 shadow-md"
+            data-testid="birthday-banner"
+          >
+            <button
+              onClick={() => setShowBirthday(false)}
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/60 transition-colors"
+              data-testid="close-birthday-btn"
+              aria-label="dismiss"
+            >
+              <X className="w-4 h-4 text-zinc-600" />
+            </button>
+            <div className="flex items-center gap-4">
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -8, 8, 0], y: [0, -3, 0, -2, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1.5 }}
+                className="bg-white rounded-2xl p-3 shadow-sm shrink-0"
+              >
+                <Cake className="w-12 h-12 text-pink-500" data-testid="birthday-cake-icon" />
+              </motion.div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl md:text-2xl font-black text-pink-600">
+                  {language === 'zh' ? '🎂 生日快乐!' : '🎂 Happy Birthday!'}
+                </h3>
+                <p className="text-sm md:text-base font-medium text-zinc-700 mt-0.5">
+                  {language === 'zh'
+                    ? `${user?.full_name || user?.username},祝你今天过得开心,继续加油学习!`
+                    : `Have an amazing day, ${user?.full_name || user?.username}! Keep crushing your quizzes!`}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
