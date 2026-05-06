@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   ArrowLeft, Trash2, User, Star, Trophy, Clock, Search, ArrowUpDown,
-  Calendar, Mail, School, MapPin, GraduationCap, BookOpen, X, CheckCircle
+  Calendar, Mail, School, MapPin, GraduationCap, BookOpen, X, CheckCircle,
+  ArrowUpNarrowWide, ArrowDownWideNarrow
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -35,6 +36,7 @@ function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('username');
+  const [sortDir, setSortDir] = useState('asc'); // 'asc' | 'desc'
   const [selectedUser, setSelectedUser] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const navigate = useNavigate();
@@ -101,19 +103,20 @@ function AdminUsers() {
         (u.full_name || '').toLowerCase().includes(q)
       );
     });
-    const sorters = {
+    const baseSorters = {
       username: (a, b) => (a.username || '').localeCompare(b.username || ''),
-      level: (a, b) => (b.current_level || 0) - (a.current_level || 0),
-      points: (a, b) => (b.total_points || 0) - (a.total_points || 0)
+      level: (a, b) => (a.current_level || 0) - (b.current_level || 0),
+      points: (a, b) => (a.total_points || 0) - (b.total_points || 0)
     };
-    filtered = [...filtered].sort(sorters[sortBy] || sorters.username);
+    const cmp = baseSorters[sortBy] || baseSorters.username;
+    filtered = [...filtered].sort((a, b) => (sortDir === 'asc' ? cmp(a, b) : -cmp(a, b)));
     return filtered;
-  }, [users, search, sortBy]);
+  }, [users, search, sortBy, sortDir]);
 
   const sortOptions = [
-    { value: 'username', label_en: 'Username (A-Z)', label_zh: '用户名 (A-Z)' },
-    { value: 'level', label_en: 'Level (high → low)', label_zh: '等级 (高 → 低)' },
-    { value: 'points', label_en: 'Total Points (high → low)', label_zh: '总积分 (高 → 低)' }
+    { value: 'username', label_en: 'Username', label_zh: '用户名' },
+    { value: 'level', label_en: 'Level', label_zh: '等级' },
+    { value: 'points', label_en: 'Total Points', label_zh: '总积分' }
   ];
 
   return (
@@ -158,20 +161,44 @@ function AdminUsers() {
               </button>
             )}
           </div>
-          <div className="relative md:w-72">
-            <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              data-testid="users-sort-select"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-zinc-200 focus:border-violet-500 focus:outline-none text-sm font-medium appearance-none bg-white"
+          <div className="flex gap-2 md:w-auto">
+            <div className="relative flex-1 md:w-56">
+              <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                data-testid="users-sort-select"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-zinc-200 focus:border-violet-500 focus:outline-none text-sm font-medium appearance-none bg-white"
+              >
+                {sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {language === 'zh' ? `排序: ${opt.label_zh}` : `Sort: ${opt.label_en}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              data-testid="users-sort-direction"
+              title={
+                sortDir === 'asc'
+                  ? (language === 'zh' ? '升序' : 'Ascending')
+                  : (language === 'zh' ? '降序' : 'Descending')
+              }
+              className="px-3 py-2.5 rounded-xl border-2 border-zinc-200 hover:border-violet-500 hover:bg-violet-50 text-zinc-700 font-bold text-sm flex items-center gap-1.5 transition-colors shrink-0"
             >
-              {sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {language === 'zh' ? `排序: ${opt.label_zh}` : `Sort: ${opt.label_en}`}
-                </option>
-              ))}
-            </select>
+              {sortDir === 'asc' ? (
+                <>
+                  <ArrowUpNarrowWide className="w-4 h-4 text-violet-500" />
+                  <span className="hidden md:inline">{language === 'zh' ? '升序' : 'Asc'}</span>
+                </>
+              ) : (
+                <>
+                  <ArrowDownWideNarrow className="w-4 h-4 text-violet-500" />
+                  <span className="hidden md:inline">{language === 'zh' ? '降序' : 'Desc'}</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
