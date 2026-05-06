@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -13,7 +13,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 function Register() {
   const [step, setStep] = useState(1); // Multi-step form
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     username: '',
     email: '',
     password: '',
@@ -28,12 +28,22 @@ function Register() {
       sejarah: '',
       science: ''
     }
-  });
+  };
+  const [formData, setFormData] = useState(initialFormState);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const { language, toggleLanguage, t } = useLanguage();
+
+  // Always start with a fresh form when landing on the page
+  useEffect(() => {
+    setStep(1);
+    setFormData(initialFormState);
+    setErrors({});
+    setShowPassword(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const grades = [
     { value: 1, label: language === 'zh' ? '中一 (Form 1)' : 'Form 1' },
@@ -258,7 +268,7 @@ function Register() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             {/* Step 1: Account */}
             {step === 1 && (
               <div className="space-y-4">
@@ -272,6 +282,7 @@ function Register() {
                       type="text"
                       value={formData.username}
                       onChange={(e) => updateFormData('username', e.target.value)}
+                      autoComplete="off"
                       className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
                         errors.username ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
                       }`}
@@ -295,6 +306,7 @@ function Register() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => updateFormData('email', e.target.value)}
+                      autoComplete="off"
                       className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
                         errors.email ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
                       }`}
@@ -315,6 +327,7 @@ function Register() {
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => updateFormData('password', e.target.value)}
+                      autoComplete="new-password"
                       className={`w-full pl-10 pr-10 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
                         errors.password ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
                       }`}
@@ -342,6 +355,7 @@ function Register() {
                       type="password"
                       value={formData.confirmPassword}
                       onChange={(e) => updateFormData('confirmPassword', e.target.value)}
+                      autoComplete="new-password"
                       className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
                         errors.confirmPassword ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
                       }`}
