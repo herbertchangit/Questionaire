@@ -209,16 +209,14 @@ function PlayPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className={`
-                          w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
+                          w-3 h-3 rounded-full flex-shrink-0 transition-colors
                           ${isSelected 
-                            ? 'bg-violet-500 text-white' 
-                            : 'bg-zinc-100 text-zinc-600'
+                            ? 'bg-violet-500 ring-4 ring-violet-200' 
+                            : 'bg-zinc-200'
                           }
-                        `}>
-                          {String.fromCharCode(65 + index)}
-                        </div>
-                        <span>{option}</span>
-                        {isSelected && <CheckCircle className="w-5 h-5 text-violet-500 ml-auto" />}
+                        `} />
+                        <span className="flex-1">{option}</span>
+                        {isSelected && <CheckCircle className="w-5 h-5 text-violet-500" />}
                       </div>
                     </button>
                   );

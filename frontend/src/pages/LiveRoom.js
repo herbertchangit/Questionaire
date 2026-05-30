@@ -395,17 +395,15 @@ function LiveRoom() {
                       } ${answered && !showResult ? 'opacity-70' : ''} disabled:cursor-not-allowed`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 transition-colors ${
                           isCorrect
-                            ? 'bg-green-500 text-white'
+                            ? 'bg-green-500 ring-4 ring-green-200'
                             : isWrong
-                            ? 'bg-red-500 text-white'
+                            ? 'bg-red-500 ring-4 ring-red-200'
                             : isSelected
-                            ? 'bg-pink-500 text-white'
-                            : 'bg-zinc-100 text-zinc-600'
-                        }`}>
-                          {String.fromCharCode(65 + idx)}
-                        </div>
+                            ? 'bg-pink-500 ring-4 ring-pink-200'
+                            : 'bg-zinc-200'
+                        }`} />
                         <span className="flex-1">{opt}</span>
                         {isCorrect && <CheckCircle className="w-5 h-5 text-green-500" />}
                         {isWrong && <X className="w-5 h-5 text-red-500" />}
