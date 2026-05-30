@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
 import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X } from 'lucide-react';
+import { SUBJECTS, getSubject } from '../../constants/subjects';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -49,7 +50,7 @@ function ManageQuestions() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    subject_id: 'subj_bm',
+    subject_id: SUBJECTS[0].id,
     level_num: 1,
     stage_num: 1,
     text_en: '',
@@ -210,7 +211,7 @@ function ManageQuestions() {
 
   const resetForm = () => {
     setFormData({
-      subject_id: 'subj_bm',
+      subject_id: SUBJECTS[0].id,
       level_num: 1,
       stage_num: 1,
       text_en: '',
@@ -224,11 +225,10 @@ function ManageQuestions() {
     });
   };
 
-  const subjects = [
-    { id: 'subj_bm', name: language === 'zh' ? '马来语' : 'Bahasa Malaysia' },
-    { id: 'subj_history', name: language === 'zh' ? '历史' : 'History' },
-    { id: 'subj_science', name: language === 'zh' ? '科学' : 'Science' }
-  ];
+  const subjects = SUBJECTS.map((s) => ({
+    id: s.id,
+    name: language === 'zh' ? s.name_zh : s.name_en
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50" data-testid="manage-questions">
@@ -301,7 +301,9 @@ function ManageQuestions() {
                   <div className="flex-1 min-w-0">
                     <div className="flex gap-2 mb-2 flex-wrap">
                       <span className="text-xs font-bold bg-violet-100 text-violet-700 px-2 py-1 rounded">
-                        {subjects.find(s => s.id === q.subject_id)?.name}
+                        {getSubject(q.subject_id) 
+                          ? (language === 'zh' ? getSubject(q.subject_id).name_zh : getSubject(q.subject_id).name_en)
+                          : q.subject_id}
                       </span>
                       <span className="text-xs font-bold bg-zinc-100 text-zinc-600 px-2 py-1 rounded">
                         L{q.level_num} S{q.stage_num}

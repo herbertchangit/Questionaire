@@ -5,18 +5,32 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { ArrowLeft, Clock, Star, CheckCircle, Calendar, BookOpen } from 'lucide-react';
+import { getSubject } from '../constants/subjects';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const SUBJECT_LABELS = {
-  en: { subj_bm: 'BM', subj_history: 'History', subj_science: 'Science' },
-  zh: { subj_bm: '马来语', subj_history: '历史', subj_science: '科学' }
-};
-const SUBJECT_COLORS = {
-  subj_bm: 'bg-violet-100 text-violet-700',
-  subj_history: 'bg-amber-100 text-amber-700',
-  subj_science: 'bg-emerald-100 text-emerald-700'
-};
+const SUBJECT_COLORS = [
+  'bg-violet-100 text-violet-700',
+  'bg-amber-100 text-amber-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-sky-100 text-sky-700',
+  'bg-pink-100 text-pink-700',
+  'bg-orange-100 text-orange-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-teal-100 text-teal-700',
+];
+
+function subjectColor(id) {
+  let hash = 0;
+  for (let i = 0; i < (id || '').length; i++) hash = (hash + id.charCodeAt(i)) % SUBJECT_COLORS.length;
+  return SUBJECT_COLORS[hash];
+}
+
+function subjectLabel(id, language) {
+  const s = getSubject(id);
+  if (!s) return id || '';
+  return language === 'zh' ? s.name_zh : s.name_en;
+}
 
 function History() {
   const [history, setHistory] = useState([]);
@@ -173,9 +187,9 @@ function History() {
                         <span
                           key={sid}
                           data-testid={`history-subject-${sid}-${index}`}
-                          className={`text-xs font-bold px-2 py-0.5 rounded-md ${SUBJECT_COLORS[sid] || 'bg-zinc-100 text-zinc-600'}`}
+                          className={`text-xs font-bold px-2 py-0.5 rounded-md ${subjectColor(sid)}`}
                         >
-                          {SUBJECT_LABELS[language]?.[sid] || sid}: {b.correct}/{b.total}
+                          {subjectLabel(sid, language)}: {b.correct}/{b.total}
                         </span>
                       ))}
                     </div>

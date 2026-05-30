@@ -20,30 +20,22 @@ db = client[os.environ['DB_NAME']]
 
 # Subjects (just categories for questions, not tied to levels)
 SUBJECTS = [
-    {
-        "id": "subj_bm",
-        "code": "BM",
-        "name_en": "Bahasa Malaysia",
-        "name_zh": "马来语",
-        "icon": "book-open",
-        "color": "#8B5CF6"
-    },
-    {
-        "id": "subj_history",
-        "code": "HISTORY",
-        "name_en": "History",
-        "name_zh": "历史",
-        "icon": "landmark",
-        "color": "#F59E0B"
-    },
-    {
-        "id": "subj_science",
-        "code": "SCIENCE",
-        "name_en": "Science",
-        "name_zh": "科学",
-        "icon": "flask-conical",
-        "color": "#10B981"
-    }
+    {"id": "subj_accounting",        "name_en": "Accounting",        "name_zh": "会计",       "icon": "calculator",     "color": "#0EA5E9"},
+    {"id": "subj_bahasa_melayu",     "name_en": "Bahasa Melayu",     "name_zh": "马来文",     "icon": "book-open",      "color": "#8B5CF6"},
+    {"id": "subj_biology",           "name_en": "Biology",           "name_zh": "生物",       "icon": "leaf",           "color": "#10B981"},
+    {"id": "subj_business",          "name_en": "Business",          "name_zh": "商业",       "icon": "briefcase",      "color": "#0891B2"},
+    {"id": "subj_chemistry",         "name_en": "Chemistry",         "name_zh": "化学",       "icon": "flask-conical",  "color": "#F59E0B"},
+    {"id": "subj_chinese",           "name_en": "Chinese",           "name_zh": "华文",       "icon": "languages",      "color": "#DC2626"},
+    {"id": "subj_computer",          "name_en": "Computer",          "name_zh": "电脑",       "icon": "monitor",        "color": "#6366F1"},
+    {"id": "subj_economics",         "name_en": "Economics",         "name_zh": "经济",       "icon": "trending-up",    "color": "#059669"},
+    {"id": "subj_english",           "name_en": "English",           "name_zh": "英文",       "icon": "languages",      "color": "#2563EB"},
+    {"id": "subj_geography",         "name_en": "Geography",         "name_zh": "地理",       "icon": "globe",          "color": "#0D9488"},
+    {"id": "subj_history",           "name_en": "History",           "name_zh": "历史",       "icon": "landmark",       "color": "#B45309"},
+    {"id": "subj_malay_literature",  "name_en": "Malay Literature",  "name_zh": "马来文文学", "icon": "book",           "color": "#9333EA"},
+    {"id": "subj_mathematics",       "name_en": "Mathematics",       "name_zh": "数学",       "icon": "sigma",          "color": "#EC4899"},
+    {"id": "subj_moral",             "name_en": "Moral",             "name_zh": "道德教育",   "icon": "heart",          "color": "#F472B6"},
+    {"id": "subj_physics",           "name_en": "Physics",           "name_zh": "物理",       "icon": "atom",           "color": "#7C3AED"},
+    {"id": "subj_science",           "name_en": "Science",           "name_zh": "科学",       "icon": "flask-conical",  "color": "#22C55E"},
 ]
 
 # Levels (Game progression - independent of subjects)
@@ -58,27 +50,27 @@ LEVELS = [
 # Sample questions (mixed subjects per stage)
 QUESTIONS = [
     # Level 1, Stage 1 - Mixed subjects
-    {"level_num": 1, "stage_num": 1, "subject_id": "subj_bm", "text_en": "What is the meaning of 'Selamat Pagi'?", "text_zh": "'Selamat Pagi' 是什么意思?", "options_en": ["Good morning", "Good night", "Good afternoon", "Goodbye"], "options_zh": ["早安", "晚安", "下午好", "再见"], "correct_answer": 0},
+    {"level_num": 1, "stage_num": 1, "subject_id": "subj_bahasa_melayu", "text_en": "What is the meaning of 'Selamat Pagi'?", "text_zh": "'Selamat Pagi' 是什么意思?", "options_en": ["Good morning", "Good night", "Good afternoon", "Goodbye"], "options_zh": ["早安", "晚安", "下午好", "再见"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 1, "subject_id": "subj_history", "text_en": "When did Malaysia gain independence?", "text_zh": "马来西亚何时获得独立?", "options_en": ["1957", "1963", "1945", "1969"], "options_zh": ["1957年", "1963年", "1945年", "1969年"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 1, "subject_id": "subj_science", "text_en": "What is the chemical symbol for water?", "text_zh": "水的化学符号是什么?", "options_en": ["H2O", "CO2", "NaCl", "O2"], "options_zh": ["H2O", "CO2", "NaCl", "O2"], "correct_answer": 0},
     
     # Level 1, Stage 2
-    {"level_num": 1, "stage_num": 2, "subject_id": "subj_bm", "text_en": "What does 'Terima Kasih' mean?", "text_zh": "'Terima Kasih' 是什么意思?", "options_en": ["Thank you", "Sorry", "Please", "Welcome"], "options_zh": ["谢谢", "对不起", "请", "欢迎"], "correct_answer": 0},
+    {"level_num": 1, "stage_num": 2, "subject_id": "subj_bahasa_melayu", "text_en": "What does 'Terima Kasih' mean?", "text_zh": "'Terima Kasih' 是什么意思?", "options_en": ["Thank you", "Sorry", "Please", "Welcome"], "options_zh": ["谢谢", "对不起", "请", "欢迎"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 2, "subject_id": "subj_history", "text_en": "Who was the first Prime Minister of Malaysia?", "text_zh": "谁是马来西亚第一任首相?", "options_en": ["Tunku Abdul Rahman", "Tun Razak", "Tun Hussein Onn", "Dr. Mahathir"], "options_zh": ["东姑阿都拉曼", "敦拉萨", "敦乌森翁", "马哈迪医生"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 2, "subject_id": "subj_science", "text_en": "Which planet is known as the Red Planet?", "text_zh": "哪颗行星被称为红色星球?", "options_en": ["Mars", "Venus", "Jupiter", "Saturn"], "options_zh": ["火星", "金星", "木星", "土星"], "correct_answer": 0},
     
     # Level 1, Stage 3
-    {"level_num": 1, "stage_num": 3, "subject_id": "subj_bm", "text_en": "Which word means 'school' in Bahasa Malaysia?", "text_zh": "哪个词在马来语中表示 '学校'?", "options_en": ["Sekolah", "Rumah", "Kedai", "Hospital"], "options_zh": ["Sekolah", "Rumah", "Kedai", "Hospital"], "correct_answer": 0},
+    {"level_num": 1, "stage_num": 3, "subject_id": "subj_bahasa_melayu", "text_en": "Which word means 'school' in Bahasa Malaysia?", "text_zh": "哪个词在马来语中表示 '学校'?", "options_en": ["Sekolah", "Rumah", "Kedai", "Hospital"], "options_zh": ["Sekolah", "Rumah", "Kedai", "Hospital"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 3, "subject_id": "subj_history", "text_en": "What is the name of Malaysia's national flag?", "text_zh": "马来西亚国旗的名称是什么?", "options_en": ["Jalur Gemilang", "Sang Saka", "Bendera Kebangsaan", "Panji Negara"], "options_zh": ["辉煌条纹", "Sang Saka", "国旗", "国家旗帜"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 3, "subject_id": "subj_science", "text_en": "What is the largest organ in the human body?", "text_zh": "人体最大的器官是什么?", "options_en": ["Skin", "Liver", "Heart", "Brain"], "options_zh": ["皮肤", "肝脏", "心脏", "大脑"], "correct_answer": 0},
     
     # Level 1, Stage 4
-    {"level_num": 1, "stage_num": 4, "subject_id": "subj_bm", "text_en": "What is the Malay word for 'water'?", "text_zh": "'水' 的马来语是什么?", "options_en": ["Air", "Api", "Angin", "Awan"], "options_zh": ["Air", "Api", "Angin", "Awan"], "correct_answer": 0},
+    {"level_num": 1, "stage_num": 4, "subject_id": "subj_bahasa_melayu", "text_en": "What is the Malay word for 'water'?", "text_zh": "'水' 的马来语是什么?", "options_en": ["Air", "Api", "Angin", "Awan"], "options_zh": ["Air", "Api", "Angin", "Awan"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 4, "subject_id": "subj_history", "text_en": "Which ancient kingdom was located in Kedah?", "text_zh": "哪个古代王国位于吉打?", "options_en": ["Langkasuka", "Majapahit", "Srivijaya", "Malacca"], "options_zh": ["狼牙修", "满者伯夷", "室利佛逝", "马六甲"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 4, "subject_id": "subj_science", "text_en": "What gas do plants absorb from the atmosphere?", "text_zh": "植物从大气中吸收什么气体?", "options_en": ["Carbon dioxide", "Oxygen", "Nitrogen", "Hydrogen"], "options_zh": ["二氧化碳", "氧气", "氮气", "氢气"], "correct_answer": 0},
     
     # Level 1, Stage 5
-    {"level_num": 1, "stage_num": 5, "subject_id": "subj_bm", "text_en": "Choose the correct spelling:", "text_zh": "选择正确的拼写:", "options_en": ["Kerajaan", "Karajaan", "Kerajann", "Karajann"], "options_zh": ["Kerajaan", "Karajaan", "Kerajann", "Karajann"], "correct_answer": 0},
+    {"level_num": 1, "stage_num": 5, "subject_id": "subj_bahasa_melayu", "text_en": "Choose the correct spelling:", "text_zh": "选择正确的拼写:", "options_en": ["Kerajaan", "Karajaan", "Kerajann", "Karajann"], "options_zh": ["Kerajaan", "Karajaan", "Kerajann", "Karajann"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 5, "subject_id": "subj_history", "text_en": "The Malacca Sultanate was founded in which year?", "text_zh": "马六甲苏丹国成立于哪一年?", "options_en": ["1400", "1511", "1824", "1957"], "options_zh": ["1400年", "1511年", "1824年", "1957年"], "correct_answer": 0},
     {"level_num": 1, "stage_num": 5, "subject_id": "subj_science", "text_en": "What is the boiling point of water in Celsius?", "text_zh": "水的沸点是多少摄氏度?", "options_en": ["100°C", "0°C", "50°C", "212°C"], "options_zh": ["100°C", "0°C", "50°C", "212°C"], "correct_answer": 0},
 ]
@@ -110,6 +102,9 @@ async def seed_database():
     # Seed subjects (just categories)
     print("📚 Seeding subjects...")
     await db.subjects.insert_many(SUBJECTS)
+    
+    # Backfill: rename legacy subj_bm references on existing questions to new ID
+    await db.edu_questions.update_many({"subject_id": "subj_bahasa_melayu"}, {"$set": {"subject_id": "subj_bahasa_melayu"}})
     
     # Seed levels
     print("🎮 Seeding levels...")
