@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
-import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X, Download } from 'lucide-react';
 import { SUBJECTS, getSubject } from '../../constants/subjects';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -185,6 +185,67 @@ function ManageQuestions() {
     }
   };
 
+  const escapeCsv = (val) => {
+    if (val === null || val === undefined) return '';
+    const s = String(val).replace(/\r?\n/g, ' ');
+    if (s.includes(',') || s.includes('"') || s.includes(';')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const handleExportCsv = () => {
+    const rows = questions;
+    if (!rows.length) {
+      toast.error(language === 'zh' ? '没有可导出的问题' : 'No questions to export');
+      return;
+    }
+    const headers = [
+      'id', 'subject_id', 'subject_name', 'level_num', 'stage_num', 'difficulty',
+      'text_en', 'text_zh',
+      'option_a_en', 'option_b_en', 'option_c_en', 'option_d_en',
+      'option_a_zh', 'option_b_zh', 'option_c_zh', 'option_d_zh',
+      'correct_answer', 'points',
+      'has_image', 'has_audio', 'created_at'
+    ];
+    const lines = [headers.join(',')];
+    rows.forEach((q) => {
+      const subj = getSubject(q.subject_id);
+      const subjName = subj ? (language === 'zh' ? subj.name_zh : subj.name_en) : q.subject_id;
+      const row = [
+        q.id,
+        q.subject_id,
+        subjName,
+        q.level_num,
+        q.stage_num,
+        q.difficulty || 'apprentice',
+        q.text_en,
+        q.text_zh,
+        ...(q.options_en || []).slice(0, 4).concat(['', '', '', '']).slice(0, 4),
+        ...(q.options_zh || []).slice(0, 4).concat(['', '', '', '']).slice(0, 4),
+        q.correct_answer,
+        q.points,
+        q.image ? 'yes' : 'no',
+        q.audio ? 'yes' : 'no',
+        q.created_at || ''
+      ].map(escapeCsv);
+      lines.push(row.join(','));
+    });
+    // UTF-8 BOM so Excel renders Chinese correctly
+    const csv = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `eduquiz_questions_${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(language === 'zh' ? `已导出 ${rows.length} 题` : `Exported ${rows.length} questions`);
+  };
+
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -246,7 +307,16 @@ function ManageQuestions() {
           </button>
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-black text-zinc-900">{t('manage_questions')}</h1>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleExportCsv}
+                className="bg-blue-500 text-white font-bold px-4 py-2 rounded-xl hover:bg-blue-600 flex items-center gap-2"
+                data-testid="export-csv-btn"
+                title={language === 'zh' ? '导出为 CSV' : 'Export to CSV'}
+              >
+                <Download className="w-5 h-5" />
+                {language === 'zh' ? '导出 CSV' : 'Export CSV'}
+              </button>
               <label className="bg-green-500 text-white font-bold px-4 py-2 rounded-xl cursor-pointer hover:bg-green-600 flex items-center gap-2">
                 <Upload className="w-5 h-5" />
                 {t('bulk_upload')}
