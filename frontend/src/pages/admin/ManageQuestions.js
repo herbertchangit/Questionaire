@@ -263,18 +263,29 @@ function ManageQuestions() {
     
     try {
       const response = await axios.post(`${API_URL}/api/admin/questions/bulk`, formData, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success(`Uploaded ${response.data.uploaded} questions`);
-      if (response.data.errors?.length > 0) {
-        toast.error(`${response.data.errors.length} errors occurred`);
+      const { uploaded, error_count, errors } = response.data;
+      if (uploaded > 0) {
+        toast.success(language === 'zh' ? `已上传 ${uploaded} 题` : `Uploaded ${uploaded} questions`);
+      }
+      if (error_count > 0) {
+        // Show full list (first few inline + count)
+        const preview = (errors || []).slice(0, 3).join(' · ');
+        toast.error(
+          (language === 'zh' ? `${error_count} 行被跳过` : `${error_count} rows skipped`) +
+          (preview ? `\n${preview}` : ''),
+          { duration: 8000 }
+        );
+        console.warn('Bulk upload skipped rows:', errors);
+      }
+      if (uploaded === 0 && error_count === 0) {
+        toast.error(language === 'zh' ? 'CSV 没有有效行' : 'CSV had no valid rows');
       }
       fetchQuestions();
     } catch (error) {
-      toast.error('Upload failed');
+      const detail = error.response?.data?.detail || error.message || 'Upload failed';
+      toast.error(typeof detail === 'string' ? detail : 'Upload failed');
     }
     e.target.value = '';
   };

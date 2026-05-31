@@ -861,14 +861,35 @@ async def delete_question(question_id: str, admin: User = Depends(get_admin_user
 async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depends(get_admin_user)):
     """
     Upload questions via CSV file.
-    Expected columns: subject_id, level_num, stage_num, text_en, text_zh, option1_en, option2_en, option3_en, option4_en, option1_zh, option2_zh, option3_zh, option4_zh, correct_answer, points
+    Accepts the schema produced by the Export CSV button (option_a_en ... option_d_zh)
+    as well as the legacy schema (option1_en ... option4_zh).
+    Optional columns: difficulty, story_board_en, story_board_zh, points.
     """
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
     content = await file.read()
-    decoded = content.decode('utf-8')
+    if not content:
+        raise HTTPException(status_code=400, detail="File is empty")
+    
+    # utf-8-sig strips Excel/BOM characters so the first column header is clean
+    try:
+        decoded = content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        decoded = content.decode('utf-8', errors='replace')
+    
     reader = csv.DictReader(io.StringIO(decoded))
+    
+    # Normalize column lookups (case + space tolerant)
+    def col(row: dict, *names: str) -> str:
+        for n in names:
+            if n in row and row[n] is not None and str(row[n]).strip() != "":
+                return str(row[n]).strip()
+            # try lowercased / stripped variants
+            for k, v in row.items():
+                if k and k.strip().lower() == n.lower() and v is not None and str(v).strip() != "":
+                    return str(v).strip()
+        return ""
     
     questions = []
     errors = []
@@ -877,19 +898,65 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
     for row in reader:
         row_num += 1
         try:
-            stage_id = f"stage_{row['subject_id']}_level_{row['level_num']}_{row['stage_num']}"
+            subject_id = col(row, "subject_id")
+            if not subject_id:
+                errors.append(f"Row {row_num}: missing subject_id")
+                continue
+            
+            level_num = int(col(row, "level_num") or 1)
+            stage_num = int(col(row, "stage_num") or 1)
+            text_en = col(row, "text_en")
+            text_zh = col(row, "text_zh")
+            if not text_en or not text_zh:
+                errors.append(f"Row {row_num}: text_en and text_zh are required")
+                continue
+            
+            # Accept both column naming conventions
+            options_en = [
+                col(row, "option_a_en", "option1_en"),
+                col(row, "option_b_en", "option2_en"),
+                col(row, "option_c_en", "option3_en"),
+                col(row, "option_d_en", "option4_en"),
+            ]
+            options_zh = [
+                col(row, "option_a_zh", "option1_zh"),
+                col(row, "option_b_zh", "option2_zh"),
+                col(row, "option_c_zh", "option3_zh"),
+                col(row, "option_d_zh", "option4_zh"),
+            ]
+            if not all(options_en) or not all(options_zh):
+                errors.append(f"Row {row_num}: all four English & Chinese options are required")
+                continue
+            
+            correct_answer = int(col(row, "correct_answer") or 0)
+            if correct_answer < 0 or correct_answer > 3:
+                errors.append(f"Row {row_num}: correct_answer must be 0-3")
+                continue
+            
+            points = int(col(row, "points") or 10)
+            
+            difficulty = (col(row, "difficulty") or "apprentice").lower()
+            if difficulty not in ("apprentice", "master", "legend"):
+                difficulty = "apprentice"
+            
+            stage_id = f"stage_{subject_id}_level_{level_num}_{stage_num}"
             question_doc = {
                 "id": str(uuid.uuid4()),
-                "subject_id": row["subject_id"],
-                "level_num": int(row["level_num"]),
-                "stage_num": int(row["stage_num"]),
+                "subject_id": subject_id,
+                "level_num": level_num,
+                "stage_num": stage_num,
                 "stage_id": stage_id,
-                "text_en": row["text_en"],
-                "text_zh": row["text_zh"],
-                "options_en": [row["option1_en"], row["option2_en"], row["option3_en"], row["option4_en"]],
-                "options_zh": [row["option1_zh"], row["option2_zh"], row["option3_zh"], row["option4_zh"]],
-                "correct_answer": int(row["correct_answer"]),
-                "points": int(row.get("points", 10)),
+                "text_en": text_en,
+                "text_zh": text_zh,
+                "options_en": options_en,
+                "options_zh": options_zh,
+                "correct_answer": correct_answer,
+                "points": points,
+                "difficulty": difficulty,
+                "story_board_en": col(row, "story_board_en") or None,
+                "story_board_zh": col(row, "story_board_zh") or None,
+                "image": None,
+                "audio": None,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "created_by": admin.id
             }
@@ -897,13 +964,17 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
         except Exception as e:
             errors.append(f"Row {row_num}: {str(e)}")
     
+    if not questions and not errors:
+        raise HTTPException(status_code=400, detail="CSV contains no rows. Expected header row + data rows.")
+    
     if questions:
         await db.edu_questions.insert_many(questions)
     
     return {
-        "message": f"Uploaded {len(questions)} questions",
+        "message": f"Uploaded {len(questions)} questions" + (f", {len(errors)} skipped" if errors else ""),
         "uploaded": len(questions),
-        "errors": errors
+        "errors": errors[:25],  # cap to avoid huge responses
+        "error_count": len(errors),
     }
 
 # Admin notices
