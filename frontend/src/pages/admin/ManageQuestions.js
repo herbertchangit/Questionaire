@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
-import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X, Download, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpDown, Hash } from 'lucide-react';
 import { SUBJECTS, getSubject } from '../../constants/subjects';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -60,11 +60,14 @@ function ManageQuestions() {
     correct_answer: 0,
     points: 10,
     difficulty: 'apprentice',
+    sequence_number: 0,
     story_board_en: '',
     story_board_zh: '',
     image: null,
     audio: null
   });
+  const [sortBy, setSortBy] = useState('sequence');  // sequence | level | stage
+  const [sortDir, setSortDir] = useState('asc');
   const navigate = useNavigate();
   const { language, t } = useLanguage();
 
@@ -144,6 +147,7 @@ function ManageQuestions() {
       correct_answer: question.correct_answer,
       points: question.points,
       difficulty: question.difficulty || 'apprentice',
+      sequence_number: question.sequence_number ?? 0,
       story_board_en: question.story_board_en || '',
       story_board_zh: question.story_board_zh || '',
       image: question.image || null,
@@ -152,6 +156,32 @@ function ManageQuestions() {
     setEditingId(question.id);
     setShowForm(true);
   };
+
+  const handleSequenceChange = async (questionId, newSeq) => {
+    const token = localStorage.getItem('token');
+    const seq = Math.max(0, parseInt(newSeq) || 0);
+    try {
+      await axios.patch(
+        `${API_URL}/api/admin/questions/${questionId}/sequence`,
+        { sequence_number: seq },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, sequence_number: seq } : q)));
+    } catch (err) {
+      toast.error(language === 'zh' ? '更新序号失败' : 'Failed to update sequence');
+    }
+  };
+
+  // Sort questions by selected field & direction
+  const sortedQuestions = useMemo(() => {
+    const cmp = {
+      sequence: (a, b) => (a.sequence_number ?? 0) - (b.sequence_number ?? 0),
+      level: (a, b) => (a.level_num ?? 0) - (b.level_num ?? 0) || (a.stage_num ?? 0) - (b.stage_num ?? 0) || (a.sequence_number ?? 0) - (b.sequence_number ?? 0),
+      stage: (a, b) => (a.stage_num ?? 0) - (b.stage_num ?? 0) || (a.level_num ?? 0) - (b.level_num ?? 0) || (a.sequence_number ?? 0) - (b.sequence_number ?? 0),
+    };
+    const fn = cmp[sortBy] || cmp.sequence;
+    return [...questions].sort((a, b) => (sortDir === 'asc' ? fn(a, b) : -fn(a, b)));
+  }, [questions, sortBy, sortDir]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -205,7 +235,7 @@ function ManageQuestions() {
       return;
     }
     const headers = [
-      'id', 'subject_id', 'subject_name', 'level_num', 'stage_num', 'difficulty',
+      'id', 'sequence_number', 'subject_id', 'subject_name', 'level_num', 'stage_num', 'difficulty',
       'story_board_en', 'story_board_zh',
       'text_en', 'text_zh',
       'option_a_en', 'option_b_en', 'option_c_en', 'option_d_en',
@@ -219,6 +249,7 @@ function ManageQuestions() {
       const subjName = subj ? (language === 'zh' ? subj.name_zh : subj.name_en) : q.subject_id;
       const row = [
         q.id,
+        q.sequence_number ?? 0,
         q.subject_id,
         subjName,
         q.level_num,
@@ -302,6 +333,7 @@ function ManageQuestions() {
       correct_answer: 0,
       points: 10,
       difficulty: 'apprentice',
+      sequence_number: 0,
       story_board_en: '',
       story_board_zh: '',
       image: null,
@@ -375,6 +407,36 @@ function ManageQuestions() {
           </select>
         </div>
 
+        {/* Sort toolbar */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap" data-testid="questions-sort-toolbar">
+          <span className="text-sm font-bold text-zinc-700">
+            {language === 'zh' ? '排序方式:' : 'Sort by:'}
+          </span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            data-testid="questions-sort-by"
+            className="px-3 py-1.5 rounded-lg border-2 border-zinc-200 text-sm font-medium bg-white focus:border-violet-500 focus:outline-none"
+          >
+            <option value="sequence">{language === 'zh' ? '序号' : 'Sequence Number'}</option>
+            <option value="level">{language === 'zh' ? '关卡' : 'Level'}</option>
+            <option value="stage">{language === 'zh' ? '阶段' : 'Stage'}</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            data-testid="questions-sort-dir"
+            className="px-3 py-1.5 rounded-lg border-2 border-zinc-200 hover:border-violet-500 hover:bg-violet-50 text-sm font-bold flex items-center gap-1.5"
+            title={sortDir === 'asc' ? (language === 'zh' ? '升序' : 'Ascending') : (language === 'zh' ? '降序' : 'Descending')}
+          >
+            {sortDir === 'asc' ? <ArrowUpNarrowWide className="w-4 h-4 text-violet-500" /> : <ArrowDownWideNarrow className="w-4 h-4 text-violet-500" />}
+            <span className="hidden md:inline">{sortDir === 'asc' ? (language === 'zh' ? '升序' : 'Asc') : (language === 'zh' ? '降序' : 'Desc')}</span>
+          </button>
+          <span className="text-xs text-zinc-400 ml-auto">
+            {language === 'zh' ? `共 ${questions.length} 题` : `${questions.length} questions`}
+          </span>
+        </div>
+
         {/* Questions List */}
         {loading ? (
           <div className="text-center py-12">Loading...</div>
@@ -382,7 +444,7 @@ function ManageQuestions() {
           <div className="text-center py-12 text-zinc-500">No questions found</div>
         ) : (
           <div className="space-y-3">
-            {questions.map((q, i) => (
+            {sortedQuestions.map((q, i) => (
               <motion.div
                 key={q.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -392,7 +454,27 @@ function ManageQuestions() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex gap-2 mb-2 flex-wrap">
+                    <div className="flex gap-2 mb-2 flex-wrap items-center">
+                      <label
+                        className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded flex items-center gap-1"
+                        title={language === 'zh' ? '序号 (可编辑)' : 'Sequence number (editable)'}
+                      >
+                        <Hash className="w-3 h-3" />
+                        <input
+                          type="number"
+                          defaultValue={q.sequence_number ?? 0}
+                          min={0}
+                          onBlur={(e) => {
+                            const newVal = parseInt(e.target.value) || 0;
+                            if (newVal !== (q.sequence_number ?? 0)) {
+                              handleSequenceChange(q.id, newVal);
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                          data-testid={`seq-input-${q.id}`}
+                          className="w-14 bg-transparent text-blue-700 font-bold text-xs text-center focus:outline-none focus:bg-white focus:rounded"
+                        />
+                      </label>
                       <span className="text-xs font-bold bg-violet-100 text-violet-700 px-2 py-1 rounded">
                         {getSubject(q.subject_id) 
                           ? (language === 'zh' ? getSubject(q.subject_id).name_zh : getSubject(q.subject_id).name_en)
@@ -613,7 +695,7 @@ function ManageQuestions() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-bold mb-1">Correct Answer</label>
                   <select
@@ -623,6 +705,19 @@ function ManageQuestions() {
                   >
                     {[0,1,2,3].map(i => <option key={i} value={i}>Option {String.fromCharCode(65 + i)}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1">
+                    {language === 'zh' ? '序号' : 'Sequence Number'}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.sequence_number}
+                    onChange={(e) => setFormData({ ...formData, sequence_number: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
+                    min={0}
+                    data-testid="form-sequence-number"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-bold mb-1">Points</label>

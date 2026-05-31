@@ -127,6 +127,7 @@ class QuestionCreate(BaseModel):
     correct_answer: int
     points: int = 10
     difficulty: str = "apprentice"  # apprentice | master | legend
+    sequence_number: int = 0
     story_board_en: Optional[str] = None
     story_board_zh: Optional[str] = None
     image: Optional[str] = None  # data:image/... base64, max ~1MB
@@ -471,11 +472,11 @@ async def start_stage(stage_id: str, current_user: User = Depends(get_current_us
     if not stage:
         raise HTTPException(status_code=404, detail="Stage not found")
     
-    # Get questions for this stage (mixed subjects)
+    # Get questions for this stage (mixed subjects), ordered by sequence_number
     questions = await db.edu_questions.find(
         {"level_num": stage["level_num"], "stage_num": stage["stage_num"]},
         {"_id": 0, "correct_answer": 0}
-    ).to_list(100)
+    ).sort("sequence_number", 1).to_list(100)
     
     await log_activity(current_user.id, "quiz_start", {"stage_id": stage_id})
     
@@ -777,6 +778,27 @@ async def get_admin_questions(
     questions = await db.edu_questions.find(query, {"_id": 0}).limit(500).to_list(500)
     return questions
 
+class QuestionSequenceUpdate(BaseModel):
+    sequence_number: int
+
+
+@api_router.patch("/admin/questions/{question_id}/sequence")
+async def update_question_sequence(
+    question_id: str,
+    payload: QuestionSequenceUpdate,
+    admin: User = Depends(get_admin_user)
+):
+    if payload.sequence_number < 0:
+        raise HTTPException(status_code=400, detail="Sequence number must be >= 0")
+    result = await db.edu_questions.update_one(
+        {"id": question_id},
+        {"$set": {"sequence_number": payload.sequence_number}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Question not found")
+    return {"message": "Sequence updated", "sequence_number": payload.sequence_number}
+
+
 def _validate_question_media(image: Optional[str], audio: Optional[str]):
     """Validate that image/audio are data URLs within size limits."""
     if image:
@@ -813,6 +835,7 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
         "correct_answer": question.correct_answer,
         "points": question.points,
         "difficulty": question.difficulty,
+        "sequence_number": question.sequence_number,
         "story_board_en": question.story_board_en,
         "story_board_zh": question.story_board_zh,
         "image": question.image,
@@ -839,6 +862,7 @@ async def update_question(question_id: str, question: QuestionCreate, admin: Use
             "correct_answer": question.correct_answer,
             "points": question.points,
             "difficulty": question.difficulty,
+            "sequence_number": question.sequence_number,
             "story_board_en": question.story_board_en,
             "story_board_zh": question.story_board_zh,
             "image": question.image,
@@ -940,6 +964,8 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
             
             points = int(col(row, "points") or 10)
             
+            sequence_number = int(col(row, "sequence_number") or 0)
+            
             difficulty = (col(row, "difficulty") or "apprentice").lower()
             if difficulty not in ("apprentice", "master", "legend"):
                 difficulty = "apprentice"
@@ -958,6 +984,7 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
                 "correct_answer": correct_answer,
                 "points": points,
                 "difficulty": difficulty,
+                "sequence_number": sequence_number,
                 "story_board_en": col(row, "story_board_en") or None,
                 "story_board_zh": col(row, "story_board_zh") or None,
                 "image": None,
