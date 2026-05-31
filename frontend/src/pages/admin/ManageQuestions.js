@@ -99,14 +99,49 @@ function ManageQuestions() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     
+    // Validate: at least 2 English options (A & B) required
+    const optsEn = formData.options_en.map((o) => (o || '').trim());
+    if (!optsEn[0] || !optsEn[1]) {
+      toast.error(language === 'zh' ? '至少需要选项 A 和 B (英文)' : 'Options A and B (English) are required');
+      return;
+    }
+    if (formData.correct_answer > 3 || formData.correct_answer < 0) {
+      toast.error('Correct answer must be 0-3');
+      return;
+    }
+    // Correct answer must point to a filled English option
+    if (!optsEn[formData.correct_answer]) {
+      toast.error(
+        language === 'zh'
+          ? '正确答案必须指向已填写的选项'
+          : `Correct answer (Option ${String.fromCharCode(65 + formData.correct_answer)}) must be a filled option`
+      );
+      return;
+    }
+    
+    // Apply fallback: text_zh and any blank Chinese options inherit their English counterparts
+    const textZh = (formData.text_zh || '').trim() || formData.text_en;
+    const optsZh = formData.options_zh.map((o, i) => {
+      const v = (o || '').trim();
+      return v || optsEn[i] || '';
+    });
+    
+    const payload = {
+      ...formData,
+      text_en: formData.text_en.trim(),
+      text_zh: textZh,
+      options_en: optsEn,
+      options_zh: optsZh
+    };
+    
     try {
       if (editingId) {
-        await axios.put(`${API_URL}/api/admin/questions/${editingId}`, formData, {
+        await axios.put(`${API_URL}/api/admin/questions/${editingId}`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Question updated');
       } else {
-        await axios.post(`${API_URL}/api/admin/questions`, formData, {
+        await axios.post(`${API_URL}/api/admin/questions`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Question created');
@@ -116,7 +151,7 @@ function ManageQuestions() {
       resetForm();
       fetchQuestions();
     } catch (error) {
-      toast.error('Failed to save question');
+      toast.error(error.response?.data?.detail || 'Failed to save question');
     }
   };
 
@@ -637,7 +672,9 @@ function ManageQuestions() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold mb-1">Question (English)</label>
+                <label className="block text-sm font-bold mb-1">
+                  Question (English) <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   value={formData.text_en}
                   onChange={(e) => setFormData({ ...formData, text_en: e.target.value })}
@@ -648,19 +685,22 @@ function ManageQuestions() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold mb-1">Question (中文)</label>
+                <label className="block text-sm font-bold mb-1 text-zinc-600">
+                  Question (中文) <span className="text-xs text-zinc-400">(optional)</span>
+                </label>
                 <textarea
                   value={formData.text_zh}
                   onChange={(e) => setFormData({ ...formData, text_zh: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
                   rows={2}
-                  required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold mb-1">Options (English)</label>
+                  <label className="block text-sm font-bold mb-1">
+                    Options (English) <span className="text-xs font-normal text-zinc-400">(A & B required)</span>
+                  </label>
                   {formData.options_en.map((opt, i) => (
                     <input
                       key={i}
@@ -671,13 +711,16 @@ function ManageQuestions() {
                         setFormData({ ...formData, options_en: newOpts });
                       }}
                       className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200 mb-2"
-                      placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                      required
+                      placeholder={`Option ${String.fromCharCode(65 + i)}${i < 2 ? ' *' : ' (optional)'}`}
+                      required={i < 2}
+                      data-testid={`option-en-${i}`}
                     />
                   ))}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-1">Options (中文)</label>
+                  <label className="block text-sm font-bold mb-1 text-zinc-600">
+                    Options (中文) <span className="text-xs text-zinc-400">(optional)</span>
+                  </label>
                   {formData.options_zh.map((opt, i) => (
                     <input
                       key={i}
@@ -688,8 +731,8 @@ function ManageQuestions() {
                         setFormData({ ...formData, options_zh: newOpts });
                       }}
                       className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200 mb-2"
-                      placeholder={`选项 ${String.fromCharCode(65 + i)}`}
-                      required
+                      placeholder={`选项 ${String.fromCharCode(65 + i)} (optional)`}
+                      data-testid={`option-zh-${i}`}
                     />
                   ))}
                 </div>
