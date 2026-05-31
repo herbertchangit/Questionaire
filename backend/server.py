@@ -907,9 +907,12 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
             stage_num = int(col(row, "stage_num") or 1)
             text_en = col(row, "text_en")
             text_zh = col(row, "text_zh")
-            if not text_en or not text_zh:
-                errors.append(f"Row {row_num}: text_en and text_zh are required")
+            if not text_en:
+                errors.append(f"Row {row_num}: text_en is required")
                 continue
+            # Chinese text optional - fall back to English so quiz still renders in zh mode
+            if not text_zh:
+                text_zh = text_en
             
             # Accept both column naming conventions
             options_en = [
@@ -918,15 +921,17 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
                 col(row, "option_c_en", "option3_en"),
                 col(row, "option_d_en", "option4_en"),
             ]
-            options_zh = [
+            options_zh_raw = [
                 col(row, "option_a_zh", "option1_zh"),
                 col(row, "option_b_zh", "option2_zh"),
                 col(row, "option_c_zh", "option3_zh"),
                 col(row, "option_d_zh", "option4_zh"),
             ]
-            if not all(options_en) or not all(options_zh):
-                errors.append(f"Row {row_num}: all four English & Chinese options are required")
+            if not all(options_en):
+                errors.append(f"Row {row_num}: all four English options are required")
                 continue
+            # Chinese options optional - fall back to the English option per slot
+            options_zh = [zh or en for en, zh in zip(options_en, options_zh_raw)]
             
             correct_answer = int(col(row, "correct_answer") or 0)
             if correct_answer < 0 or correct_answer > 3:
