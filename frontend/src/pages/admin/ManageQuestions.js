@@ -59,6 +59,7 @@ function ManageQuestions() {
     options_zh: ['', '', '', ''],
     correct_answer: 0,
     points: 10,
+    difficulty: 'apprentice',
     image: null,
     audio: null
   });
@@ -140,6 +141,7 @@ function ManageQuestions() {
       options_zh: question.options_zh,
       correct_answer: question.correct_answer,
       points: question.points,
+      difficulty: question.difficulty || 'apprentice',
       image: question.image || null,
       audio: question.audio || null
     });
@@ -220,6 +222,7 @@ function ManageQuestions() {
       options_zh: ['', '', '', ''],
       correct_answer: 0,
       points: 10,
+      difficulty: 'apprentice',
       image: null,
       audio: null
     });
@@ -308,6 +311,20 @@ function ManageQuestions() {
                       <span className="text-xs font-bold bg-zinc-100 text-zinc-600 px-2 py-1 rounded">
                         L{q.level_num} S{q.stage_num}
                       </span>
+                      {q.difficulty && (
+                        <span
+                          className={`text-xs font-bold px-2 py-1 rounded ${
+                            q.difficulty === 'legend'
+                              ? 'bg-amber-100 text-amber-700'
+                              : q.difficulty === 'master'
+                              ? 'bg-violet-100 text-violet-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}
+                          data-testid={`difficulty-badge-${q.id}`}
+                        >
+                          {q.difficulty}
+                        </span>
+                      )}
                       {q.image && (
                         <span
                           className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1"
@@ -487,6 +504,37 @@ function ManageQuestions() {
                     className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
                     min={1}
                   />
+                </div>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <label className="block text-sm font-bold mb-1">
+                  {language === 'zh' ? '难度' : 'Difficulty'}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { v: 'apprentice', en: 'Apprentice', zh: '学徒',  c: 'emerald' },
+                    { v: 'master',     en: 'Master',     zh: '高手',  c: 'violet' },
+                    { v: 'legend',     en: 'Legend',     zh: '传奇',  c: 'amber' }
+                  ].map(({ v, en, zh, c }) => {
+                    const active = formData.difficulty === v;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, difficulty: v })}
+                        data-testid={`difficulty-${v}`}
+                        className={`py-2 rounded-lg font-bold text-sm border-2 transition-colors ${
+                          active
+                            ? `bg-${c}-500 border-${c}-500 text-white`
+                            : `bg-white border-zinc-200 text-zinc-700 hover:border-${c}-300`
+                        }`}
+                      >
+                        {language === 'zh' ? zh : en}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

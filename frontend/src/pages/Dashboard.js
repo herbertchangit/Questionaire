@@ -10,6 +10,7 @@ import {
   ChevronRight, Globe, Flame, Mountain, Hammer, Rocket, Lock, Cake, X
 } from 'lucide-react';
 import Avatar from '../components/Avatar';
+import LevelProgressionCard from '../components/LevelProgressionCard';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -30,6 +31,7 @@ function Dashboard() {
   const [user, setUser] = useState(null);
   const [levels, setLevels] = useState([]);
   const [stats, setStats] = useState(null);
+  const [progression, setProgression] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState(null);
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,12 +76,13 @@ function Dashboard() {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [userRes, levelsRes, statsRes, welcomeRes, noticesRes] = await Promise.all([
+      const [userRes, levelsRes, statsRes, welcomeRes, noticesRes, progressionRes] = await Promise.all([
         axios.get(`${API_URL}/api/auth/me`, { headers }),
         axios.get(`${API_URL}/api/levels`, { headers }),
         axios.get(`${API_URL}/api/progress/stats`, { headers }),
         axios.get(`${API_URL}/api/welcome-message`, { headers }),
-        axios.get(`${API_URL}/api/notices`)
+        axios.get(`${API_URL}/api/notices`),
+        axios.get(`${API_URL}/api/user/progression`, { headers })
       ]);
 
       setUser(userRes.data);
@@ -87,6 +90,7 @@ function Dashboard() {
       setStats(statsRes.data);
       setWelcomeMsg(welcomeRes.data);
       setNotices(noticesRes.data);
+      setProgression(progressionRes.data);
     } catch (error) {
       if (error.response?.status === 401) {
         localStorage.clear();
@@ -274,6 +278,13 @@ function Dashboard() {
               </div>
             </div>
           </motion.div>
+        )}
+
+        {/* Level Progression */}
+        {progression && (
+          <div className="mb-8">
+            <LevelProgressionCard progression={progression} language={language} />
+          </div>
         )}
 
         {/* Stats Cards */}

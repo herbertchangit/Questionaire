@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { Trophy, Star, Clock, CheckCircle, XCircle, ArrowRight, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import LevelUpModal from '../components/LevelUpModal';
 
 function ResultsPage() {
   const { stageId } = useParams();
@@ -11,6 +12,7 @@ function ResultsPage() {
   const navigate = useNavigate();
   const { language, t } = useLanguage();
   const { result, stage } = location.state || {};
+  const [showLevelUp, setShowLevelUp] = useState(Boolean(result?.level_up_info));
 
   React.useEffect(() => {
     if (result?.score === result?.total) {
@@ -37,17 +39,28 @@ function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50 py-8 px-4" data-testid="results-page">
+      <LevelUpModal
+        levelUpInfo={result.level_up_info}
+        open={showLevelUp}
+        onClose={() => setShowLevelUp(false)}
+        language={language}
+      />
+
       <div className="max-w-2xl mx-auto">
-        {/* Level Up Banner */}
-        {result.level_up && (
+        {/* Level Up Banner (compact, persists after modal closed) */}
+        {result.level_up_info && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-6 mb-6 text-center text-white"
+            onClick={() => setShowLevelUp(true)}
+            className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl p-4 mb-6 text-center text-white cursor-pointer hover:scale-[1.01] transition-transform"
+            data-testid="level-up-banner"
           >
-            <Trophy className="w-12 h-12 mx-auto mb-2" />
-            <h2 className="text-2xl font-black">{t('level_up')}</h2>
-            <p className="font-bold opacity-90">You've reached a new level!</p>
+            <Trophy className="w-8 h-8 mx-auto mb-1" />
+            <h2 className="text-lg font-black">{t('level_up')}</h2>
+            <p className="text-sm font-bold opacity-90">
+              {language === 'zh' ? '点击查看奖励' : 'Tap to view rewards'}
+            </p>
           </motion.div>
         )}
 

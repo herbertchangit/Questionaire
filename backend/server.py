@@ -79,6 +79,16 @@ class User(BaseModel):
     stages_completed: List[str] = []
     total_time_spent: int = 0
     quizzes_completed: int = 0
+    # New progression fields (Apprentice / Master / Legend)
+    apprentice_completed: int = 0
+    master_completed: int = 0
+    legend_completed: int = 0
+    total_questions_answered: int = 0
+    total_correct_answers: int = 0
+    level_up_date: Optional[str] = None
+    coins: int = 0
+    xp: int = 0
+    badges: List[str] = []
     last_login_at: Optional[str] = None
     previous_login_at: Optional[str] = None
     created_at: str
@@ -116,6 +126,7 @@ class QuestionCreate(BaseModel):
     options_zh: List[str]
     correct_answer: int
     points: int = 10
+    difficulty: str = "apprentice"  # apprentice | master | legend
     image: Optional[str] = None  # data:image/... base64, max ~1MB
     audio: Optional[str] = None  # data:audio/... base64, max ~3MB
 
@@ -484,22 +495,28 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
         {"_id": 0}
     ).to_list(100)
     
-    # Calculate score
+    # Calculate score + difficulty correct counts
     correct_count = 0
     total_points = 0
     results = []
+    difficulty_increments = {"apprentice": 0, "master": 0, "legend": 0}
     
     for q in questions:
         user_answer = submission.answers.get(q["id"])
         is_correct = user_answer == q["correct_answer"]
+        diff = q.get("difficulty") or "apprentice"
+        if diff not in difficulty_increments:
+            diff = "apprentice"
         if is_correct:
             correct_count += 1
             total_points += q["points"]
+            difficulty_increments[diff] += 1
         results.append({
             "question_id": q["id"],
             "user_answer": user_answer,
             "correct_answer": q["correct_answer"],
-            "is_correct": is_correct
+            "is_correct": is_correct,
+            "difficulty": diff
         })
     
     # Save quiz history
@@ -518,39 +535,68 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
     }
     await db.quiz_history.insert_one(history_doc)
     
-    # Update user progress (simplified - no subject_progress)
+    # Update user counters
     user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
     stages_completed = user.get("stages_completed", [])
     if stage_id not in stages_completed:
         stages_completed.append(stage_id)
     
+    inc_payload = {
+        "total_points": total_points,
+        "total_time_spent": submission.time_spent,
+        "quizzes_completed": 1,
+        "total_questions_answered": len(questions),
+        "total_correct_answers": correct_count,
+        "apprentice_completed": difficulty_increments["apprentice"],
+        "master_completed": difficulty_increments["master"],
+        "legend_completed": difficulty_increments["legend"],
+    }
+    
     await db.users.update_one(
         {"id": current_user.id},
         {
-            "$inc": {
-                "total_points": total_points,
-                "total_time_spent": submission.time_spent,
-                "quizzes_completed": 1
-            },
-            "$set": {
-                "stages_completed": stages_completed
-            }
+            "$inc": inc_payload,
+            "$set": {"stages_completed": stages_completed}
         }
     )
     
-    # Calculate overall level based on total points
-    new_total_points = current_user.total_points + total_points
-    levels = await db.levels.find({}, {"_id": 0}).sort("unlock_points", -1).to_list(100)
-    overall_level = 1
-    for level in levels:
-        if new_total_points >= level["unlock_points"]:
-            overall_level = level["level_num"]
-            break
+    # Re-fetch user to evaluate level-up
+    from gameplay import check_level_up, LEVEL_REQUIREMENTS, get_progress
+    fresh_user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+    level_up_info = None
     
-    await db.users.update_one(
-        {"id": current_user.id},
-        {"$set": {"current_level": overall_level}}
-    )
+    # Auto-advance through multiple levels if applicable
+    while True:
+        lu = check_level_up(fresh_user)
+        if not lu:
+            break
+        # Apply level up
+        rewards = lu["rewards"]
+        new_badges = list(fresh_user.get("badges") or [])
+        badge_name = rewards.get("badge")
+        if badge_name and badge_name not in new_badges:
+            new_badges.append(badge_name)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await db.users.update_one(
+            {"id": current_user.id},
+            {
+                "$set": {
+                    "current_level": lu["to_level"],
+                    "level_up_date": now_iso,
+                    "badges": new_badges,
+                },
+                "$inc": {
+                    "coins": rewards.get("coins", 0),
+                    "xp": rewards.get("xp", 0),
+                }
+            }
+        )
+        fresh_user = await db.users.find_one({"id": current_user.id}, {"_id": 0})
+        # Record first level-up only (for celebration)
+        if not level_up_info:
+            level_up_info = lu
+    
+    progression = get_progress(fresh_user)
     
     return {
         "score": correct_count,
@@ -558,9 +604,19 @@ async def submit_stage(stage_id: str, submission: QuizSubmission, current_user: 
         "points_earned": total_points,
         "time_spent": submission.time_spent,
         "results": results,
-        "new_total_points": new_total_points,
-        "level_up": overall_level > current_user.current_level
+        "new_total_points": fresh_user.get("total_points", 0),
+        "difficulty_gained": difficulty_increments,
+        "level_up": bool(level_up_info),
+        "level_up_info": level_up_info,
+        "progression": progression,
     }
+
+
+@api_router.get("/user/progression")
+async def get_user_progression(current_user: User = Depends(get_current_user)):
+    from gameplay import get_progress
+    user = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password": 0})
+    return get_progress(user)
 
 # ==================== PROGRESS & HISTORY ====================
 
@@ -737,6 +793,9 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
     # Validate media payloads
     _validate_question_media(question.image, question.audio)
     
+    if question.difficulty not in ("apprentice", "master", "legend"):
+        raise HTTPException(status_code=400, detail="Difficulty must be apprentice, master, or legend")
+    
     stage_id = f"stage_{question.subject_id}_level_{question.level_num}_{question.stage_num}"
     
     question_doc = {
@@ -751,6 +810,7 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
         "options_zh": question.options_zh,
         "correct_answer": question.correct_answer,
         "points": question.points,
+        "difficulty": question.difficulty,
         "image": question.image,
         "audio": question.audio,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -763,6 +823,8 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
 @api_router.put("/admin/questions/{question_id}")
 async def update_question(question_id: str, question: QuestionCreate, admin: User = Depends(get_admin_user)):
     _validate_question_media(question.image, question.audio)
+    if question.difficulty not in ("apprentice", "master", "legend"):
+        raise HTTPException(status_code=400, detail="Difficulty must be apprentice, master, or legend")
     result = await db.edu_questions.update_one(
         {"id": question_id},
         {"$set": {
@@ -772,6 +834,7 @@ async def update_question(question_id: str, question: QuestionCreate, admin: Use
             "options_zh": question.options_zh,
             "correct_answer": question.correct_answer,
             "points": question.points,
+            "difficulty": question.difficulty,
             "image": question.image,
             "audio": question.audio,
             "updated_at": datetime.now(timezone.utc).isoformat()
