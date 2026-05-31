@@ -168,6 +168,18 @@ function PlayPage() {
             transition={{ duration: 0.3 }}
           >
             <div className="bg-white rounded-2xl p-6 border-2 border-zinc-200 shadow-sm mb-6">
+              {/* Story Board context (optional) */}
+              {(currentQuestion?.story_board_en || currentQuestion?.story_board_zh) && (
+                <div className="mb-5 p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 border-l-4 border-purple-400">
+                  <p className="text-xs font-black uppercase tracking-wider text-purple-600 mb-1.5">
+                    {language === 'zh' ? '故事板' : 'Story Board'}
+                  </p>
+                  <p className="text-sm md:text-base text-zinc-800 leading-relaxed whitespace-pre-wrap" data-testid="story-board">
+                    {(language === 'zh' && currentQuestion.story_board_zh) || currentQuestion.story_board_en || currentQuestion.story_board_zh}
+                  </p>
+                </div>
+              )}
+
               <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-4" data-testid="question-text">
                 {language === 'zh' ? currentQuestion?.text_zh : currentQuestion?.text_en}
               </h2>

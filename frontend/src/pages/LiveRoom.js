@@ -353,6 +353,16 @@ function LiveRoom() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl p-6 border-2 border-zinc-200 mb-4"
             >
+              {(question?.story_board_en || question?.story_board_zh) && (
+                <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 border-l-4 border-purple-400">
+                  <p className="text-xs font-black uppercase tracking-wider text-purple-600 mb-1">
+                    {language === 'zh' ? '故事板' : 'Story Board'}
+                  </p>
+                  <p className="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap" data-testid="live-story-board">
+                    {(language === 'zh' && question.story_board_zh) || question.story_board_en || question.story_board_zh}
+                  </p>
+                </div>
+              )}
               <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-4" data-testid="live-question-text">
                 {language === 'zh' ? question?.text_zh : question?.text_en}
               </h2>

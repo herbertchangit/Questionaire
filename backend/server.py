@@ -127,6 +127,8 @@ class QuestionCreate(BaseModel):
     correct_answer: int
     points: int = 10
     difficulty: str = "apprentice"  # apprentice | master | legend
+    story_board_en: Optional[str] = None
+    story_board_zh: Optional[str] = None
     image: Optional[str] = None  # data:image/... base64, max ~1MB
     audio: Optional[str] = None  # data:audio/... base64, max ~3MB
 
@@ -811,6 +813,8 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
         "correct_answer": question.correct_answer,
         "points": question.points,
         "difficulty": question.difficulty,
+        "story_board_en": question.story_board_en,
+        "story_board_zh": question.story_board_zh,
         "image": question.image,
         "audio": question.audio,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -835,6 +839,8 @@ async def update_question(question_id: str, question: QuestionCreate, admin: Use
             "correct_answer": question.correct_answer,
             "points": question.points,
             "difficulty": question.difficulty,
+            "story_board_en": question.story_board_en,
+            "story_board_zh": question.story_board_zh,
             "image": question.image,
             "audio": question.audio,
             "updated_at": datetime.now(timezone.utc).isoformat()

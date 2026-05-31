@@ -60,6 +60,8 @@ function ManageQuestions() {
     correct_answer: 0,
     points: 10,
     difficulty: 'apprentice',
+    story_board_en: '',
+    story_board_zh: '',
     image: null,
     audio: null
   });
@@ -142,6 +144,8 @@ function ManageQuestions() {
       correct_answer: question.correct_answer,
       points: question.points,
       difficulty: question.difficulty || 'apprentice',
+      story_board_en: question.story_board_en || '',
+      story_board_zh: question.story_board_zh || '',
       image: question.image || null,
       audio: question.audio || null
     });
@@ -202,6 +206,7 @@ function ManageQuestions() {
     }
     const headers = [
       'id', 'subject_id', 'subject_name', 'level_num', 'stage_num', 'difficulty',
+      'story_board_en', 'story_board_zh',
       'text_en', 'text_zh',
       'option_a_en', 'option_b_en', 'option_c_en', 'option_d_en',
       'option_a_zh', 'option_b_zh', 'option_c_zh', 'option_d_zh',
@@ -219,6 +224,8 @@ function ManageQuestions() {
         q.level_num,
         q.stage_num,
         q.difficulty || 'apprentice',
+        q.story_board_en || '',
+        q.story_board_zh || '',
         q.text_en,
         q.text_zh,
         ...(q.options_en || []).slice(0, 4).concat(['', '', '', '']).slice(0, 4),
@@ -284,6 +291,8 @@ function ManageQuestions() {
       correct_answer: 0,
       points: 10,
       difficulty: 'apprentice',
+      story_board_en: '',
+      story_board_zh: '',
       image: null,
       audio: null
     });
@@ -395,6 +404,15 @@ function ManageQuestions() {
                           {q.difficulty}
                         </span>
                       )}
+                      {(q.story_board_en || q.story_board_zh) && (
+                        <span
+                          className="text-xs font-bold bg-purple-100 text-purple-700 px-2 py-1 rounded"
+                          data-testid={`badge-storyboard-${q.id}`}
+                          title={(language === 'zh' ? q.story_board_zh : q.story_board_en) || ''}
+                        >
+                          {language === 'zh' ? '故事板' : 'Story'}
+                        </span>
+                      )}
                       {q.image && (
                         <span
                           className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1"
@@ -495,6 +513,36 @@ function ManageQuestions() {
                 </div>
               </div>
 
+              {/* Story Board (optional narrative/context) */}
+              <div className="border-t border-zinc-100 pt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-bold text-zinc-700">
+                    {language === 'zh' ? '故事板 (可选)' : 'Story Board (optional)'}
+                  </span>
+                  <span className="text-xs text-zinc-400">
+                    {language === 'zh' ? '为问题提供故事背景或阅读理解段落' : 'Add a story / reading passage shown above the question'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <textarea
+                    value={formData.story_board_en}
+                    onChange={(e) => setFormData({ ...formData, story_board_en: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200 text-sm"
+                    rows={3}
+                    placeholder="Story Board (English)"
+                    data-testid="story-board-en-input"
+                  />
+                  <textarea
+                    value={formData.story_board_zh}
+                    onChange={(e) => setFormData({ ...formData, story_board_zh: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200 text-sm"
+                    rows={3}
+                    placeholder="故事板 (中文)"
+                    data-testid="story-board-zh-input"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-bold mb-1">Question (English)</label>
                 <textarea
@@ -584,10 +632,10 @@ function ManageQuestions() {
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { v: 'apprentice', en: 'Apprentice', zh: '学徒',  c: 'emerald' },
-                    { v: 'master',     en: 'Master',     zh: '高手',  c: 'violet' },
-                    { v: 'legend',     en: 'Legend',     zh: '传奇',  c: 'amber' }
-                  ].map(({ v, en, zh, c }) => {
+                    { v: 'apprentice', en: 'Apprentice', zh: '学徒', activeCls: 'bg-emerald-500 border-emerald-500 text-white', hoverCls: 'hover:border-emerald-300' },
+                    { v: 'master',     en: 'Master',     zh: '高手', activeCls: 'bg-violet-500 border-violet-500 text-white',   hoverCls: 'hover:border-violet-300' },
+                    { v: 'legend',     en: 'Legend',     zh: '传奇', activeCls: 'bg-amber-500 border-amber-500 text-white',     hoverCls: 'hover:border-amber-300' }
+                  ].map(({ v, en, zh, activeCls, hoverCls }) => {
                     const active = formData.difficulty === v;
                     return (
                       <button
@@ -597,8 +645,8 @@ function ManageQuestions() {
                         data-testid={`difficulty-${v}`}
                         className={`py-2 rounded-lg font-bold text-sm border-2 transition-colors ${
                           active
-                            ? `bg-${c}-500 border-${c}-500 text-white`
-                            : `bg-white border-zinc-200 text-zinc-700 hover:border-${c}-300`
+                            ? activeCls
+                            : `bg-white border-zinc-200 text-zinc-700 ${hoverCls}`
                         }`}
                       >
                         {language === 'zh' ? zh : en}
