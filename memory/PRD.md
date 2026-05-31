@@ -158,3 +158,4 @@ Login → Dashboard (shows Levels directly)
 ## Changelog
 - **2026-02-24**: Restructured — Removed subject-level coupling. Levels are now independent game progression with mixed subject questions per stage.
 - **2026-05-05**: **LIVE Competition Mode** shipped (host rooms / matchmaking / tournaments + WebSocket gameplay + speed-bonus scoring). History page expanded with subject breakdown.
+- **2026-05-31**: **Add/Edit Question form — optional fields**. `text_zh`, `option_c_en`, `option_d_en` and all `option_*_zh` made optional in the admin form. Only `text_en` + Options A & B (English) are required. Blank Chinese question/options auto-fallback to their English counterparts on save. Verified end-to-end via admin UI (Question created with only English A/B filled; persisted record shows `options_en=['4','5','','']` and `text_zh` falling back to `text_en`).
