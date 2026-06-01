@@ -961,15 +961,18 @@ async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depe
                 col(row, "option_c_zh", "option3_zh"),
                 col(row, "option_d_zh", "option4_zh"),
             ]
-            if not all(options_en):
-                errors.append(f"Row {row_num}: all four English options are required")
+            if not options_en[0] or not options_en[1]:
+                errors.append(f"Row {row_num}: option_a_en and option_b_en are required")
                 continue
-            # Chinese options optional - fall back to the English option per slot
+            # Chinese options optional - fall back to the English option per slot (blank if EN slot also blank)
             options_zh = [zh or en for en, zh in zip(options_en, options_zh_raw)]
             
             correct_answer = int(col(row, "correct_answer") or 0)
             if correct_answer < 0 or correct_answer > 3:
                 errors.append(f"Row {row_num}: correct_answer must be 0-3")
+                continue
+            if not options_en[correct_answer]:
+                errors.append(f"Row {row_num}: correct_answer points to empty option {chr(65 + correct_answer)}")
                 continue
             
             points = int(col(row, "points") or 10)
