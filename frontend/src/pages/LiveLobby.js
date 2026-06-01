@@ -22,6 +22,7 @@ function LiveLobby() {
   const [tournaments, setTournaments] = useState([]);
   const [matchmakingStatus, setMatchmakingStatus] = useState(null);
   const [matchPolling, setMatchPolling] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   // Host form
   const [hostLevel, setHostLevel] = useState(1);
@@ -39,6 +40,33 @@ function LiveLobby() {
   useEffect(() => {
     fetchTournaments();
   }, []);
+
+  // Tick every second only while the Tournaments tab is active (and only if there are upcoming tournaments).
+  useEffect(() => {
+    if (activeTab !== 'tournaments' || tournaments.length === 0) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [activeTab, tournaments.length]);
+
+  // "starts in 2d 3h", "starts in 12m 34s", "starting now", or null when in the past
+  const formatCountdown = (scheduledIso) => {
+    const diff = new Date(scheduledIso).getTime() - now;
+    if (diff <= 0) {
+      return { label: language === 'zh' ? '即将开始' : 'Starting now', tone: 'live' };
+    }
+    const totalSec = Math.floor(diff / 1000);
+    const d = Math.floor(totalSec / 86400);
+    const h = Math.floor((totalSec % 86400) / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    let parts;
+    if (d > 0) parts = [`${d}d`, `${h}h`];
+    else if (h > 0) parts = [`${h}h`, `${m}m`];
+    else parts = [`${m}m`, `${s}s`];
+    const prefix = language === 'zh' ? '开始倒计时' : 'Starts in';
+    const tone = diff < 2 * 60 * 1000 ? 'imminent' : 'upcoming';
+    return { label: `${prefix} ${parts.join(' ')}`, tone };
+  };
 
   const fetchTournaments = async () => {
     const token = localStorage.getItem('token');
@@ -399,9 +427,15 @@ function LiveLobby() {
               </div>
             ) : (
               tournaments.map(tour => {
-                const sched = new Date(tour.scheduled_at);
-                const now = new Date();
-                const canJoin = sched.getTime() - now.getTime() < 2 * 60 * 1000; // within 2min of start
+                const schedMs = new Date(tour.scheduled_at).getTime();
+                const canJoin = schedMs - now < 2 * 60 * 1000; // within 2min of start (live-updating)
+                const countdown = formatCountdown(tour.scheduled_at);
+                const toneClass =
+                  countdown.tone === 'live'
+                    ? 'bg-red-100 text-red-700 animate-pulse'
+                    : countdown.tone === 'imminent'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-pink-50 text-pink-600';
                 return (
                   <div
                     key={tour.id}
@@ -413,18 +447,27 @@ function LiveLobby() {
                         <h3 className="font-black text-zinc-900">
                           {language === 'zh' ? tour.title_zh : tour.title_en}
                         </h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-zinc-600">
+                        <div className="flex items-center gap-3 mt-1 text-sm text-zinc-600 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {sched.toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US')}
+                            {new Date(tour.scheduled_at).toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US')}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" /> {Math.round(tour.total_time_limit / 60)}m
                           </span>
                         </div>
-                        <span className="inline-block mt-2 px-2 py-0.5 bg-violet-100 text-violet-700 rounded-md text-xs font-bold">
-                          {t('level')} {tour.level_num}
-                        </span>
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <span className="inline-block px-2 py-0.5 bg-violet-100 text-violet-700 rounded-md text-xs font-bold">
+                            {t('level')} {tour.level_num}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${toneClass}`}
+                            data-testid={`tournament-countdown-${tour.id}`}
+                          >
+                            <Clock className="w-3 h-3" />
+                            {countdown.label}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => startTournament(tour.id)}
