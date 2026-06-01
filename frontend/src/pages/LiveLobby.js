@@ -398,20 +398,20 @@ function LiveLobby() {
                 </p>
               </div>
             ) : (
-              tournaments.map(t => {
-                const sched = new Date(t.scheduled_at);
+              tournaments.map(tour => {
+                const sched = new Date(tour.scheduled_at);
                 const now = new Date();
                 const canJoin = sched.getTime() - now.getTime() < 2 * 60 * 1000; // within 2min of start
                 return (
                   <div
-                    key={t.id}
+                    key={tour.id}
                     className="bg-white rounded-2xl p-4 border-2 border-zinc-200"
-                    data-testid={`tournament-${t.id}`}
+                    data-testid={`tournament-${tour.id}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <h3 className="font-black text-zinc-900">
-                          {language === 'zh' ? t.title_zh : t.title_en}
+                          {language === 'zh' ? tour.title_zh : tour.title_en}
                         </h3>
                         <div className="flex items-center gap-3 mt-1 text-sm text-zinc-600">
                           <span className="flex items-center gap-1">
@@ -419,18 +419,18 @@ function LiveLobby() {
                             {sched.toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US')}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" /> {Math.round(t.total_time_limit / 60)}m
+                            <Clock className="w-4 h-4" /> {Math.round(tour.total_time_limit / 60)}m
                           </span>
                         </div>
                         <span className="inline-block mt-2 px-2 py-0.5 bg-violet-100 text-violet-700 rounded-md text-xs font-bold">
-                          {t('level')} {t.level_num}
+                          {t('level')} {tour.level_num}
                         </span>
                       </div>
                       <button
-                        onClick={() => startTournament(t.id)}
+                        onClick={() => startTournament(tour.id)}
                         disabled={!canJoin}
                         className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold px-4 py-2 rounded-xl text-sm disabled:opacity-50"
-                        data-testid={`tournament-join-${t.id}`}
+                        data-testid={`tournament-join-${tour.id}`}
                       >
                         {canJoin
                           ? (language === 'zh' ? '加入' : 'Join')

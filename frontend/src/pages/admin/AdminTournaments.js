@@ -206,36 +206,36 @@ function AdminTournaments() {
               </p>
             </div>
           ) : (
-            tournaments.map(t => (
+            tournaments.map(tour => (
               <div
-                key={t.id}
+                key={tour.id}
                 className="bg-white rounded-2xl p-4 border-2 border-zinc-200 flex items-start gap-3"
               >
                 <div className="flex-1">
-                  <h3 className="font-black text-zinc-900">{t.title_en}</h3>
-                  <p className="text-sm text-zinc-600">{t.title_zh}</p>
+                  <h3 className="font-black text-zinc-900">{tour.title_en}</h3>
+                  <p className="text-sm text-zinc-600">{tour.title_zh}</p>
                   <div className="flex items-center gap-3 mt-2 text-sm text-zinc-500">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {new Date(t.scheduled_at).toLocaleString()}
+                      {new Date(tour.scheduled_at).toLocaleString()}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" /> {Math.round(t.total_time_limit / 60)}m
+                      <Clock className="w-4 h-4" /> {Math.round(tour.total_time_limit / 60)}m
                     </span>
                     <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-md text-xs font-bold">
-                      Level {t.level_num}
+                      Level {tour.level_num}
                     </span>
-                    {t.status && (
+                    {tour.status && (
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-md text-xs font-bold">
-                        {t.status}
+                        {tour.status}
                       </span>
                     )}
                   </div>
                 </div>
                 <button
-                  onClick={() => deleteTournament(t.id)}
+                  onClick={() => deleteTournament(tour.id)}
                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                  data-testid={`delete-tournament-${t.id}`}
+                  data-testid={`delete-tournament-${tour.id}`}
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
