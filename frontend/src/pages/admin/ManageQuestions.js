@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
-import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X, Download, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpDown, Hash } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Trash2, Edit, Image as ImageIcon, Music, X, Download, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpDown, Hash, Copy } from 'lucide-react';
 import { SUBJECTS, getSubject } from '../../constants/subjects';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -68,6 +68,8 @@ function ManageQuestions() {
   });
   const [sortBy, setSortBy] = useState('sequence');  // sequence | level | stage
   const [sortDir, setSortDir] = useState('asc');
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const navigate = useNavigate();
   const { language, t } = useLanguage();
 
@@ -164,9 +166,98 @@ function ManageQuestions() {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Question deleted');
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       fetchQuestions();
     } catch (error) {
       toast.error('Failed to delete question');
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (visibleIds) => {
+    setSelectedIds((prev) => {
+      const allSelected = visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
+      if (allSelected) {
+        const next = new Set(prev);
+        visibleIds.forEach((id) => next.delete(id));
+        return next;
+      }
+      const next = new Set(prev);
+      visibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    const msg = language === 'zh'
+      ? `确定要删除选中的 ${ids.length} 个问题吗？此操作无法撤销。`
+      : `Delete ${ids.length} selected question${ids.length === 1 ? '' : 's'}? This cannot be undone.`;
+    if (!window.confirm(msg)) return;
+    const token = localStorage.getItem('token');
+    setBulkDeleting(true);
+    try {
+      const res = await axios.post(
+        `${API_URL}/api/admin/questions/bulk-delete`,
+        { ids },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(
+        language === 'zh'
+          ? `已删除 ${res.data?.deleted ?? ids.length} 个问题`
+          : `Deleted ${res.data?.deleted ?? ids.length} question${(res.data?.deleted ?? ids.length) === 1 ? '' : 's'}`
+      );
+      setSelectedIds(new Set());
+      fetchQuestions();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || (language === 'zh' ? '批量删除失败' : 'Bulk delete failed'));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleDuplicate = async (q) => {
+    const token = localStorage.getItem('token');
+    const suffixEn = ' (copy)';
+    const suffixZh = ' (副本)';
+    const payload = {
+      subject_id: q.subject_id,
+      level_num: q.level_num,
+      stage_num: q.stage_num,
+      text_en: `${q.text_en || ''}${suffixEn}`.trim(),
+      text_zh: q.text_zh ? `${q.text_zh}${suffixZh}` : `${q.text_en || ''}${suffixEn}`.trim(),
+      options_en: Array.isArray(q.options_en) ? [...q.options_en] : ['', '', '', ''],
+      options_zh: Array.isArray(q.options_zh) ? [...q.options_zh] : ['', '', '', ''],
+      correct_answer: q.correct_answer ?? 0,
+      points: q.points ?? 10,
+      difficulty: q.difficulty || 'apprentice',
+      sequence_number: (q.sequence_number ?? 0) + 1,
+      story_board_en: q.story_board_en || '',
+      story_board_zh: q.story_board_zh || '',
+      image: q.image || null,
+      audio: q.audio || null
+    };
+    try {
+      await axios.post(`${API_URL}/api/admin/questions`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(language === 'zh' ? '问题已复制' : 'Question duplicated');
+      fetchQuestions();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || (language === 'zh' ? '复制失败' : 'Failed to duplicate'));
     }
   };
 
@@ -444,6 +535,45 @@ function ManageQuestions() {
 
         {/* Sort toolbar */}
         <div className="flex items-center gap-2 mb-4 flex-wrap" data-testid="questions-sort-toolbar">
+          <label
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-zinc-200 hover:border-violet-500 hover:bg-violet-50 text-sm font-bold cursor-pointer select-none"
+            title={language === 'zh' ? '全选/取消全选 (当前列表)' : 'Select all / clear (current list)'}
+          >
+            <input
+              type="checkbox"
+              data-testid="select-all-checkbox"
+              className="w-4 h-4 accent-violet-500 cursor-pointer"
+              checked={
+                sortedQuestions.length > 0 &&
+                sortedQuestions.every((q) => selectedIds.has(q.id))
+              }
+              ref={(el) => {
+                if (!el) return;
+                const visible = sortedQuestions.map((q) => q.id);
+                const someSelected = visible.some((id) => selectedIds.has(id));
+                const allSelected = visible.length > 0 && visible.every((id) => selectedIds.has(id));
+                el.indeterminate = someSelected && !allSelected;
+              }}
+              onChange={() => toggleSelectAll(sortedQuestions.map((q) => q.id))}
+            />
+            <span>{language === 'zh' ? '全选' : 'Select all'}</span>
+          </label>
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              data-testid="bulk-delete-btn"
+              className="px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold flex items-center gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              {bulkDeleting
+                ? (language === 'zh' ? '删除中…' : 'Deleting…')
+                : (language === 'zh'
+                    ? `删除 ${selectedIds.size} 个`
+                    : `Delete ${selectedIds.size} selected`)}
+            </button>
+          )}
           <span className="text-sm font-bold text-zinc-700">
             {language === 'zh' ? '排序方式:' : 'Sort by:'}
           </span>
@@ -485,9 +615,19 @@ function ManageQuestions() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.02 * i }}
-                className="bg-white rounded-xl p-4 border-2 border-zinc-200"
+                className={`bg-white rounded-xl p-4 border-2 transition-colors ${
+                  selectedIds.has(q.id) ? 'border-violet-500 bg-violet-50/40' : 'border-zinc-200'
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
+                  <input
+                    type="checkbox"
+                    data-testid={`select-question-${q.id}`}
+                    aria-label={language === 'zh' ? '选择此问题' : 'Select this question'}
+                    className="mt-1 w-4 h-4 accent-violet-500 cursor-pointer shrink-0"
+                    checked={selectedIds.has(q.id)}
+                    onChange={() => toggleSelect(q.id)}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex gap-2 mb-2 flex-wrap items-center">
                       <label
@@ -578,12 +718,24 @@ function ManageQuestions() {
                     <button
                       onClick={() => handleEdit(q)}
                       className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
+                      title={language === 'zh' ? '编辑' : 'Edit'}
+                      data-testid={`edit-question-${q.id}`}
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
+                      onClick={() => handleDuplicate(q)}
+                      className="p-2 text-violet-500 hover:bg-violet-50 rounded-lg"
+                      title={language === 'zh' ? '复制问题' : 'Duplicate question'}
+                      data-testid={`duplicate-question-${q.id}`}
+                    >
+                      <Copy className="w-5 h-5" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(q.id)}
                       className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                      title={language === 'zh' ? '删除' : 'Delete'}
+                      data-testid={`delete-question-${q.id}`}
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>

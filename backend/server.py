@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -880,6 +880,16 @@ async def delete_question(question_id: str, admin: User = Depends(get_admin_user
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Question not found")
     return {"message": "Question deleted"}
+
+@api_router.post("/admin/questions/bulk-delete")
+async def bulk_delete_questions(payload: dict = Body(...), admin: User = Depends(get_admin_user)):
+    """Delete multiple questions by id. Body: { "ids": [str, ...] }"""
+    ids = payload.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=400, detail="`ids` must be a non-empty list")
+    ids = [str(i) for i in ids if i]
+    result = await db.edu_questions.delete_many({"id": {"$in": ids}})
+    return {"message": "Questions deleted", "deleted": result.deleted_count}
 
 @api_router.post("/admin/questions/bulk")
 async def bulk_upload_questions(file: UploadFile = File(...), admin: User = Depends(get_admin_user)):
