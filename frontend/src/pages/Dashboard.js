@@ -132,10 +132,15 @@ function Dashboard() {
       <header className="bg-white/80 backdrop-blur-md border-b-2 border-zinc-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-violet-500 to-pink-500 p-2 rounded-xl">
-              <Award className="w-6 h-6 text-white" />
+            <div className="bg-white p-1 rounded-xl shadow-sm w-10 h-10 flex items-center justify-center overflow-hidden">
+              <img
+                src="/monster-huddle-logo.png"
+                alt="Monster Huddle"
+                className="w-full h-full object-contain"
+                data-testid="header-logo"
+              />
             </div>
-            <span className="text-xl font-black text-zinc-900">EduQuiz</span>
+            <span className="text-xl font-black text-zinc-900">Monster Huddle</span>
           </div>
           
           <div className="flex items-center gap-2">
@@ -206,12 +211,36 @@ function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
+        {/* Hero: Mascot + Welcome + Stats (logo spans vertically across Welcome and Current Level) */}
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 mb-8 items-stretch" data-testid="dashboard-hero">
+          {/* Mascot column */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="md:w-56 lg:w-64 shrink-0 flex md:flex-col items-center justify-center bg-gradient-to-br from-violet-100 via-pink-50 to-white rounded-3xl border-2 border-violet-100 p-4 md:p-5 shadow-sm"
+            data-testid="dashboard-mascot"
+          >
+            <img
+              src="/monster-huddle-logo.png"
+              alt="Monster Huddle mascot"
+              className="w-32 h-32 md:w-48 md:h-48 lg:w-52 lg:h-52 object-contain drop-shadow-md"
+            />
+            <div className="hidden md:block text-center mt-3">
+              <p className="text-sm font-black text-violet-700">Monster Huddle</p>
+              <p className="text-xs font-medium text-zinc-500">
+                {language === 'zh' ? '一起学习,一起成长' : 'Learn. Level up. Together.'}
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Right column: Welcome + Birthday + Progression + Stats */}
+          <div className="flex-1 min-w-0">
+            {/* Welcome Section */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <h1 className="text-3xl md:text-4xl font-black text-zinc-900 mb-2" data-testid="welcome-title">
               {t('welcome_back')}, {user?.full_name || user?.username}! 👋
@@ -282,13 +311,13 @@ function Dashboard() {
 
         {/* Level Progression */}
         {progression && (
-          <div className="mb-8">
+          <div className="mb-6">
             <LevelProgressionCard progression={progression} language={language} />
           </div>
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -344,6 +373,8 @@ function Dashboard() {
             </div>
             <p className="text-3xl font-black text-zinc-900">{stats?.quizzes_completed || 0}</p>
           </motion.div>
+        </div>
+          </div>
         </div>
 
         {/* Levels Section */}

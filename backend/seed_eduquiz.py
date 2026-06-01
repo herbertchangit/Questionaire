@@ -1,5 +1,5 @@
 """
-EduQuiz - Database Seed Script
+Monster Huddle - Database Seed Script
 Seeds levels, stages, and sample questions for the quiz app
 Subjects are just categories for questions, not tied to levels
 """
@@ -79,12 +79,12 @@ QUESTIONS = [
 WELCOME_MESSAGES = [
     {"id": str(uuid.uuid4()), "message_en": "Welcome back! Ready to learn something new today?", "message_zh": "欢迎回来!准备好今天学习新东西了吗?", "condition": "returning_user", "priority": 1},
     {"id": str(uuid.uuid4()), "message_en": "Great job on your progress! Keep it up!", "message_zh": "你的进步很棒!继续加油!", "condition": "has_progress", "priority": 2},
-    {"id": str(uuid.uuid4()), "message_en": "Welcome to EduQuiz! Let's start your learning journey!", "message_zh": "欢迎来到EduQuiz!让我们开始你的学习之旅!", "condition": "new_user", "priority": 1}
+    {"id": str(uuid.uuid4()), "message_en": "Welcome to Monster Huddle! Let's start your learning journey!", "message_zh": "欢迎来到Monster Huddle!让我们开始你的学习之旅!", "condition": "new_user", "priority": 1}
 ]
 
 # Notices
 NOTICES = [
-    {"id": str(uuid.uuid4()), "title_en": "Welcome to EduQuiz!", "title_zh": "欢迎来到EduQuiz!", "content_en": "Start your learning journey with our interactive quizzes. Complete stages to earn points and level up!", "content_zh": "通过我们的互动测验开始您的学习之旅。完成阶段以获得积分并升级!", "type": "announcement", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+    {"id": str(uuid.uuid4()), "title_en": "Welcome to Monster Huddle!", "title_zh": "欢迎来到Monster Huddle!", "content_en": "Start your learning journey with our interactive quizzes. Complete stages to earn points and level up!", "content_zh": "通过我们的互动测验开始您的学习之旅。完成阶段以获得积分并升级!", "type": "announcement", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
     {"id": str(uuid.uuid4()), "title_en": "LIVE Competition Coming Soon!", "title_zh": "实时竞赛即将推出!", "content_en": "Get ready to compete with your classmates in real-time quiz battles!", "content_zh": "准备好与同学们进行实时测验比赛!", "type": "upcoming", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()}
 ]
 
@@ -210,7 +210,7 @@ async def seed_test_users():
             "username": "admin",
             "password": pwd_context.hash("admin123"),
             "full_name": "Admin User",
-            "school_name": "EduQuiz Admin",
+            "school_name": "Monster Huddle Admin",
             "town": "Kuala Lumpur",
             "current_grade": 6,
             "date_of_birth": "2005-01-01",

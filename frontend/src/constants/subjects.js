@@ -1,4 +1,4 @@
-// Single source of truth for all subjects across the EduQuiz app.
+// Single source of truth for all subjects across the Monster Huddle app.
 // Each subject has a slug ID, English + Chinese names.
 // Legacy IDs (subj_bm, subj_history, subj_science) remain valid so existing
 // questions and the user's latest_marks (bm/sejarah/science) continue working.

@@ -109,10 +109,15 @@ function Login() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-4">
-            <Award className="w-10 h-10 text-violet-500" />
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-2xl shadow-lg mb-4 overflow-hidden p-1">
+            <img
+              src="/monster-huddle-logo.png"
+              alt="Monster Huddle logo"
+              className="w-full h-full object-contain"
+              data-testid="login-logo"
+            />
           </div>
-          <h1 className="text-4xl font-black text-white mb-2">EduQuiz</h1>
+          <h1 className="text-4xl font-black text-white mb-2">Monster Huddle</h1>
           <p className="text-white/80 font-medium">
             {language === 'zh' ? '学习变得有趣' : 'Learning Made Fun'}
           </p>

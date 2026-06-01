@@ -4,7 +4,7 @@ import axios from 'axios';
 const translations = {
   en: {
     // Common
-    app_name: "EduQuiz",
+    app_name: "Monster Huddle",
     loading: "Loading...",
     save: "Save",
     cancel: "Cancel",
@@ -25,7 +25,7 @@ const translations = {
     confirm_password: "Confirm Password",
     login_title: "Welcome Back!",
     login_subtitle: "Sign in to continue your learning journey",
-    register_title: "Join EduQuiz",
+    register_title: "Join Monster Huddle",
     register_subtitle: "Start your learning adventure today",
     no_account: "Don't have an account?",
     have_account: "Already have an account?",
@@ -135,7 +135,7 @@ const translations = {
   },
   zh: {
     // Common
-    app_name: "EduQuiz",
+    app_name: "Monster Huddle",
     loading: "加载中...",
     save: "保存",
     cancel: "取消",
@@ -156,7 +156,7 @@ const translations = {
     confirm_password: "确认密码",
     login_title: "欢迎回来!",
     login_subtitle: "登录以继续您的学习之旅",
-    register_title: "加入EduQuiz",
+    register_title: "加入Monster Huddle",
     register_subtitle: "今天开始您的学习冒险",
     no_account: "还没有账户?",
     have_account: "已有账户?",

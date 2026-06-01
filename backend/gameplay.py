@@ -1,5 +1,5 @@
 """
-Gameplay progression rules for EduQuiz.
+Gameplay progression rules for Monster Huddle.
 Source of truth for level names, requirements per difficulty, and rewards.
 """
 

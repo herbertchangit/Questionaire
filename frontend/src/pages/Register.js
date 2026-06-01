@@ -228,10 +228,15 @@ function Register() {
       >
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-3">
-            <Award className="w-8 h-8 text-violet-500" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-3 overflow-hidden p-1">
+            <img
+              src="/monster-huddle-logo.png"
+              alt="Monster Huddle logo"
+              className="w-full h-full object-contain"
+              data-testid="register-logo"
+            />
           </div>
-          <h1 className="text-3xl font-black text-white mb-1">EduQuiz</h1>
+          <h1 className="text-3xl font-black text-white mb-1">Monster Huddle</h1>
           <p className="text-white/80 font-medium text-sm">
             {language === 'zh' ? '学习变得有趣' : 'Learning Made Fun'}
           </p>

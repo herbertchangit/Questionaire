@@ -44,7 +44,7 @@ async def seed_test_users():
             "username": "admin",
             "password": pwd_context.hash("admin123"),
             "full_name": "Admin User",
-            "school_name": "EduQuiz Admin",
+            "school_name": "Monster Huddle Admin",
             "town": "Kuala Lumpur",
             "current_grade": 6,
             "date_of_birth": "2005-01-01",
