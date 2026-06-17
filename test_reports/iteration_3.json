@@ -1,0 +1,56 @@
+{
+  "summary": "Full refactor regression for P1 server.py split (core+models+routes/*). Backend: 27/27 pytest cases pass covering auth (register/login/admin role/bad-pw), user profile (no _id/no password), language toggle, catalog (16 subjects, 5 levels, level-1 stages with is_unlocked), quiz (play no correct_answer leak, submit returns score+progression+difficulty_gained, /user/progression, /progress/stats, /progress/history with subject_breakdown and no results), leaderboard/welcome/notices, admin guards (403 for demo on /admin/*), admin questions CRUD + sequence + bulk-delete (empty=400, valid returns count) + CSV bulk upload (3 uploaded, 1 skipped with row error), admin notices round-trip, admin users (no password leaked) + detail (recent_quiz_history), admin reports (all 4 keys), and LIVE Competition tournament create→list→delete regression. Frontend: demo dashboard renders Monster Huddle mascot panel on LEFT spanning Welcome+Current Level; /live Tournaments tab works (no 't is not a function' crash); admin Manage Questions Add flow opens QuestionForm modal, submitting with Question English + option-en-0/option-en-1 yields 'Question created' toast, new row appears at TOP, bulk-select via select-question-{id} + bulk-delete-btn UI button works.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/admin/users",
+        "issue": "User documents are heterogeneous — some legacy docs have only `name` (and no `username`/`current_grade` etc.) while newer registered users have the full schema. Endpoint returns them all without normalisation. Not breaking but UI consumers must handle both shapes. Pre-existing, not caused by refactor."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/live (Host Room)",
+        "issues": [
+          "Pre-existing hydration warnings: '<span> cannot be a child of <select>/<option>' caused by Emergent visual-editor wrapper spans. Functional but generates console noise. Same noise reported in iteration_2; not introduced by this refactor."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_refactor_regression.py",
+    "/app/test_reports/pytest/refactor_regression.xml",
+    "/app/backend/tests/test_live_competition.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is now a clean 38-line entrypoint — good. Wires CORS, /api router, and live_router cleanly.",
+    "routes/__init__.py composes 6 sub-routers under /api prefix — idiomatic FastAPI structure.",
+    "All endpoints correctly exclude `_id` via {'_id': 0} projection.",
+    "admin/users does not project out `subject_progress` which can be large for legacy users; consider trimming for list view (minor perf).",
+    "auth.register and login now share regex + pwd_context from core — DRY preserved.",
+    "quiz.submit_stage correctly auto-advances multiple levels in a while-loop (preserved from original).",
+    "Bulk CSV upload validation matches spec: option_a_en + option_b_en required; correct_answer pointing to empty option produces per-row error and is skipped.",
+    "_validate_question_media size caps (~1MB image, ~3MB audio) properly enforced with 413."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_refactor_regression.py"
+  ],
+  "success_rate": {
+    "backend": "100% (27/27 pytest passed: auth 4/4, user profile 2/2, catalog 3/3, quiz 5/5, community 3/3, admin guards 1/1, admin questions 4/4, notices 1/1, admin users 2/2, reports 1/1, live regression 1/1)",
+    "frontend": "100% (admin login, dashboard mascot panel, /live tournaments tab, admin Manage Questions Add flow + QuestionForm + toast + UI bulk-delete all verified)"
+  },
+  "test_credentials": {
+    "user": "demo / demo123",
+    "admin": "admin / admin123"
+  },
+  "seed_data_creation": "Tests create TEST_RR prefixed questions/notices/tournaments and a TEST_<uuid> registered user. All admin questions + notices + live tournaments are cleaned up by their own tests. One TEST_RR registered user remains in db.users per run (no DELETE endpoint exercised). UI smoke also creates and removes one TEST_RR Playwright Q.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend/tests && pytest test_refactor_regression.py -v (≈6s, no WS). For live competition deeper regression, also run test_live_competition.py (≈65s). UI flow: admin Manage Questions Add Question form requires Question (English) textarea (the only required textarea — use page.locator('textarea[required]').first or nth(2)), plus data-testid option-en-0 / option-en-1; Save button label is 'Save'. Toast text on success is exactly 'Question created'. Bulk delete row selector: [data-testid=select-question-{id}]; bulk button: [data-testid=bulk-delete-btn]. The pre-existing select/option hydration warning on /live remains; not a regression.",
+  "rca of the issue": "N/A — refactor is behaviour-preserving. No issues found."
+}
