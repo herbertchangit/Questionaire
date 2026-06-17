@@ -1,0 +1,17 @@
+{
+  "appId": "com.monsterhuddle.app",
+  "appName": "Monster Huddle",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "backgroundColor": "#7c3aedFF"
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#7c3aedFF"
+  }
+}
