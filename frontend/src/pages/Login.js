@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { User, Lock, LogIn, Globe, Award, Eye, EyeOff } from 'lucide-react';
+import InstallPwaBanner from '../components/InstallPwaBanner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -122,6 +123,9 @@ function Login() {
             {language === 'zh' ? '学习变得有趣' : 'Learning Made Fun'}
           </p>
         </div>
+
+        {/* PWA install nudge — only fires on mobile devices that support it */}
+        <InstallPwaBanner language={language} role="user" />
 
         {/* Login Form */}
         <div className="bg-white rounded-3xl p-8 shadow-xl">
