@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Avatar from '../components/Avatar';
 import LevelProgressionCard from '../components/LevelProgressionCard';
+import InstallPwaBanner from '../components/InstallPwaBanner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -235,6 +236,7 @@ function Dashboard() {
 
           {/* Right column: Welcome + Birthday + Progression + Stats */}
           <div className="flex-1 min-w-0">
+            <InstallPwaBanner language={language} role={user?.role || 'user'} />
             {/* Welcome Section */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
