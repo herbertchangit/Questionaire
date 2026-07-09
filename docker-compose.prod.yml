@@ -1,0 +1,54 @@
+services:
+  database:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      MONGO_URL: mongodb://database:27017
+      DB_NAME: ${DB_NAME:-monster_huddle}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env before production deploy}
+      JWT_ALGORITHM: HS256
+      CORS_ORIGINS: https://monsterhurdle.jingjiqingcheng.com,http://monsterhurdle.jingjiqingcheng.com
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_BACKEND_URL: ""
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+  seed:
+    build:
+      context: ./backend
+    profiles:
+      - seed
+    environment:
+      MONGO_URL: mongodb://database:27017
+      DB_NAME: ${DB_NAME:-monster_huddle}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env before production deploy}
+      JWT_ALGORITHM: HS256
+    depends_on:
+      database:
+        condition: service_healthy
+    command: ["python", "seed_eduquiz.py"]
+
+volumes:
+  mongo_data:

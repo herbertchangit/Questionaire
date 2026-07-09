@@ -32,6 +32,11 @@ app.add_middleware(
 )
 
 
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     logger.info("Closing MongoDB connection")
