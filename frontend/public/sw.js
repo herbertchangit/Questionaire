@@ -8,7 +8,7 @@
  *     (auth tokens + dynamic data must always go to the network).
  *   - Old caches are purged on activate.
  */
-const CACHE_VERSION = 'monster-huddle-v1';
+const CACHE_VERSION = 'monster-huddle-v2';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
