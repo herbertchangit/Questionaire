@@ -13,7 +13,7 @@ import Avatar from '../components/Avatar';
 import LevelProgressionCard from '../components/LevelProgressionCard';
 import InstallPwaBanner from '../components/InstallPwaBanner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 const levelIcons = {
   'flame': Flame,
@@ -28,7 +28,7 @@ const levelNames = {
   zh: { 1: '决心', 2: '自律', 3: '毅力', 4: '勤劳', 5: '突破' }
 };
 
-function Dashboard() {
+function Dashboard({ onSessionExpired }) {
   const [user, setUser] = useState(null);
   const [levels, setLevels] = useState([]);
   const [stats, setStats] = useState(null);
@@ -94,8 +94,10 @@ function Dashboard() {
       setProgression(progressionRes.data);
     } catch (error) {
       if (error.response?.status === 401) {
-        localStorage.clear();
-        navigate('/login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        onSessionExpired?.();
+        navigate('/login', { replace: true });
       } else {
         toast.error('Failed to load data');
       }
@@ -106,9 +108,10 @@ function Dashboard() {
 
   const handleLogout = () => {
     localStorage.clear();
+    onSessionExpired?.();
     toast.success(language === 'zh' ? '退出成功' : 'Logged out successfully');
     setTimeout(() => {
-      window.location.href = '/login';
+      navigate('/login', { replace: true });
     }, 500);
   };
 

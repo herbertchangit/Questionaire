@@ -7,7 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { ArrowLeft, Clock, Star, CheckCircle, Calendar, BookOpen } from 'lucide-react';
 import { getSubject } from '../constants/subjects';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 const SUBJECT_COLORS = [
   'bg-violet-100 text-violet-700',

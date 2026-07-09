@@ -12,7 +12,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../../lib/api';
 
 function Analytics() {
   const [summary, setSummary] = useState(null);

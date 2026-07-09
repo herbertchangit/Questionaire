@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 function getWsUrl(code, token) {
   const base = API_URL.replace(/^http/, 'ws');

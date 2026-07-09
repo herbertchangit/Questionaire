@@ -9,7 +9,7 @@ import { SUBJECTS, getSubject } from '../../constants/subjects';
 import QuestionForm from './manage-questions/QuestionForm';
 import { exportQuestionsCsv } from './manage-questions/csvUtils';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../../lib/api';
 
 function ManageQuestions() {
   const [questions, setQuestions] = useState([]);

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Avatar from '../../components/Avatar';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../../lib/api';
 
 const SUBJECT_LABELS = {
   en: { bm: 'BM', sejarah: 'Sejarah', science: 'Science' },

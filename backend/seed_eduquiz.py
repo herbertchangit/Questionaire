@@ -174,9 +174,6 @@ async def seed_database():
     print(f"   - {len(stages)} stages (5 per level)")
     print(f"   - {len(questions)} questions")
 
-if __name__ == "__main__":
-    asyncio.run(seed_database())
-
 # Update seed to add test users with new schema
 async def seed_test_users():
     from passlib.context import CryptContext

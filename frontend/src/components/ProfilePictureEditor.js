@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Camera, Upload, Trash2, X, Check } from 'lucide-react';
 import Avatar from './Avatar';
+import { readStoredJson } from '../lib/storage';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 const MAX_DIM = 400;
 const JPEG_QUALITY = 0.85;
 
@@ -142,7 +143,7 @@ function ProfilePictureEditor({ currentSrc, name, language, onSaved }) {
           : (language === 'zh' ? '头像已移除' : 'Profile picture removed')
       );
       // Update cached user object
-      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      const u = readStoredJson('user');
       if (u) {
         u.profile_picture = picture;
         localStorage.setItem('user', JSON.stringify(u));

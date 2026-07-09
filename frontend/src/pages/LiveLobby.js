@@ -8,7 +8,7 @@ import {
   ArrowLeft, Users, Zap, Trophy, Plus, Hash, Clock, Calendar, Loader
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 const levelNames = {
   en: { 1: 'Determination', 2: 'Discipline', 3: 'Perseverance', 4: 'Hard-working', 5: 'Breakthrough' },

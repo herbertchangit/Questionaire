@@ -9,7 +9,7 @@ import {
   BookOpen, Landmark, FlaskConical, Trophy, Clock
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../../lib/api';
 
 function AdminDashboard() {
   const [reports, setReports] = useState(null);

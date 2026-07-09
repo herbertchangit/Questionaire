@@ -7,9 +7,9 @@ import { useLanguage } from '../context/LanguageContext';
 import { User, Lock, LogIn, Globe, Award, Eye, EyeOff } from 'lucide-react';
 import InstallPwaBanner from '../components/InstallPwaBanner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
-function Login() {
+function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -69,19 +69,23 @@ function Login() {
         localStorage.removeItem('rememberedUsername');
       }
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const { token, user } = response.data;
+      if (!token || !user) {
+        throw new Error('Login response missing session data');
+      }
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      onLogin?.({ token, user });
       
       // Apply user's saved language as the default
-      if (response.data.user?.language && ['en', 'zh'].includes(response.data.user.language)) {
-        setLanguage(response.data.user.language);
+      if (user?.language && ['en', 'zh'].includes(user.language)) {
+        setLanguage(user.language);
       }
       
       toast.success(response.data.message || (language === 'zh' ? '登录成功!' : 'Login successful!'));
       
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 500);
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       const errorMsg = error.response?.data?.detail || (language === 'zh' ? '登录失败' : 'Login failed');
       setErrors({ form: errorMsg });

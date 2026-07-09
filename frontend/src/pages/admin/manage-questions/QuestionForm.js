@@ -13,7 +13,7 @@ import { Image as ImageIcon, Music, Upload, X } from 'lucide-react';
 
 import { compressImage, fileToDataUrl } from './mediaUtils';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../../../lib/api';
 
 const DIFFICULTY_OPTS = [
   { v: 'apprentice', en: 'Apprentice', zh: '学徒', activeCls: 'bg-emerald-500 border-emerald-500 text-white', hoverCls: 'hover:border-emerald-300' },

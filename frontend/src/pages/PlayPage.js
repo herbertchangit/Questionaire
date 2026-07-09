@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { Clock, ChevronRight, CheckCircle } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 function PlayPage() {
   const { stageId } = useParams();

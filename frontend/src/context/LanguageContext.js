@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { readStoredJson } from '../lib/storage';
 
 const translations = {
   en: {
@@ -268,17 +269,15 @@ const translations = {
 
 const LanguageContext = createContext();
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(() => {
     // Prefer the language stored on the logged-in user object; fall back to localStorage
-    try {
-      const u = JSON.parse(localStorage.getItem('user') || 'null');
-      if (u?.language) return u.language;
-    } catch (e) {}
+    const u = readStoredJson('user');
+    if (['en', 'zh'].includes(u?.language)) return u.language;
     const saved = localStorage.getItem('language');
-    return saved || 'en';
+    return ['en', 'zh'].includes(saved) ? saved : 'en';
   });
 
   useEffect(() => {
@@ -291,12 +290,20 @@ export function LanguageProvider({ children }) {
 
   // Local-only setter (used right after login to sync state with server-saved value)
   const setLanguage = (lang) => {
+    if (!['en', 'zh'].includes(lang)) return;
     setLanguageState(lang);
+    localStorage.setItem('language', lang);
+    const u = readStoredJson('user');
+    if (u) {
+      u.language = lang;
+      localStorage.setItem('user', JSON.stringify(u));
+    }
   };
 
   // Persist the selected language to the backend if the user is logged in
   const persistLanguage = async (lang) => {
-    setLanguageState(lang);
+    if (!['en', 'zh'].includes(lang)) return;
+    setLanguage(lang);
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
@@ -305,12 +312,6 @@ export function LanguageProvider({ children }) {
         { language: lang },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Keep cached user object in sync
-      const u = JSON.parse(localStorage.getItem('user') || 'null');
-      if (u) {
-        u.language = lang;
-        localStorage.setItem('user', JSON.stringify(u));
-      }
     } catch (e) {
       // Non-fatal - state still updated locally
     }

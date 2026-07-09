@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import ProfilePictureEditor from '../components/ProfilePictureEditor';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
 function Settings() {
   const [profile, setProfile] = useState(null);
@@ -29,6 +29,12 @@ function Settings() {
     fetchProfile();
   }, []);
 
+  useEffect(() => {
+    setProfileForm((current) => (
+      current ? { ...current, language } : current
+    ));
+  }, [language]);
+
   const fetchProfile = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -46,7 +52,7 @@ function Settings() {
         town: r.data.town || '',
         current_grade: r.data.current_grade || 1,
         date_of_birth: r.data.date_of_birth || '',
-        language: r.data.language || 'en',
+        language: language || r.data.language || 'en',
         latest_marks: {
           bm: r.data.latest_marks?.bm ?? 0,
           sejarah: r.data.latest_marks?.sejarah ?? 0,
@@ -70,6 +76,11 @@ function Settings() {
   const updateProfileField = (field, value) => {
     setProfileForm((prev) => ({ ...prev, [field]: value }));
     if (profileErrors[field]) setProfileErrors((prev) => ({ ...prev, [field]: null }));
+  };
+
+  const updateProfileLanguage = (value) => {
+    updateProfileField('language', value);
+    persistLanguage(value);
   };
 
   const updateMark = (subject, value) => {
@@ -408,7 +419,7 @@ function Settings() {
                 <button
                   type="button"
                   disabled={!editing}
-                  onClick={() => updateProfileField('language', 'en')}
+                  onClick={() => updateProfileLanguage('en')}
                   data-testid="profile-lang-en"
                   className={`py-2.5 px-4 rounded-xl font-bold border-2 transition-colors text-sm ${
                     profileForm.language === 'en'
@@ -421,7 +432,7 @@ function Settings() {
                 <button
                   type="button"
                   disabled={!editing}
-                  onClick={() => updateProfileField('language', 'zh')}
+                  onClick={() => updateProfileLanguage('zh')}
                   data-testid="profile-lang-zh"
                   className={`py-2.5 px-4 rounded-xl font-bold border-2 transition-colors text-sm ${
                     profileForm.language === 'zh'
@@ -433,7 +444,7 @@ function Settings() {
                 </button>
               </div>
               <p className="text-xs text-zinc-500 mt-1">
-                {language === 'zh' ? '下次登录时自动使用所选语言' : 'Will be your default language on next login'}
+                {language === 'zh' ? '语言会立即应用到所有页面' : 'Language applies immediately across all pages'}
               </p>
             </div>
 

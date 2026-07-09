@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ArrowLeft, Users, Trash2, Key, RotateCcw, Mail, AlertTriangle } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../../lib/api';
 
 function UserManagement() {
   const [users, setUsers] = useState([]);

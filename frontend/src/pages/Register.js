@@ -9,9 +9,9 @@ import {
   School, MapPin, Calendar, BookOpen, GraduationCap, Mail
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../lib/api';
 
-function Register() {
+function Register({ onRegister }) {
   const [step, setStep] = useState(1); // Multi-step form
   const initialFormState = {
     username: '',
@@ -192,14 +192,18 @@ function Register() {
         language
       });
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const { token, user } = response.data;
+      if (!token || !user) {
+        throw new Error('Registration response missing session data');
+      }
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      onRegister?.({ token, user });
       
       toast.success(response.data.message || (language === 'zh' ? '注册成功!' : 'Registration successful!'));
       
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 500);
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       const errorMsg = error.response?.data?.detail || (language === 'zh' ? '注册失败' : 'Registration failed');
       setErrors({ form: errorMsg });
