@@ -116,7 +116,7 @@ function Login({ onLogin }) {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-28 h-28 mb-4">
             <img
-              src="/monster-huddle-logo.png?v=3"
+              src="/monster-huddle-transparent.png"
               alt="Monster Huddle logo"
               className="w-full h-full object-contain drop-shadow-xl"
               data-testid="login-logo"
