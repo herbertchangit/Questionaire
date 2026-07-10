@@ -221,13 +221,13 @@ function Dashboard({ onSessionExpired }) {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="md:w-56 lg:w-64 shrink-0 flex md:flex-col items-center justify-center bg-gradient-to-br from-violet-100 via-pink-50 to-white rounded-3xl border-2 border-violet-100 p-4 md:p-5 shadow-sm"
+            className="md:w-56 lg:w-64 shrink-0 flex md:flex-col items-center justify-center p-2 md:p-3"
             data-testid="dashboard-mascot"
           >
             <img
               src="/monster-huddle-logo.png"
               alt="Monster Huddle mascot"
-              className="w-32 h-32 md:w-48 md:h-48 lg:w-52 lg:h-52 object-contain drop-shadow-md"
+              className="w-36 h-36 md:w-52 md:h-52 lg:w-56 lg:h-56 object-contain drop-shadow-xl"
             />
             <div className="hidden md:block text-center mt-3">
               <p className="text-sm font-black text-violet-700">Monster Huddle</p>
