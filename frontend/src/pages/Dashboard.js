@@ -136,11 +136,11 @@ function Dashboard({ onSessionExpired }) {
       <header className="bg-white/80 backdrop-blur-md border-b-2 border-zinc-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-white p-1 rounded-xl shadow-sm w-10 h-10 flex items-center justify-center overflow-hidden">
+            <div className="w-10 h-10 flex items-center justify-center">
               <img
                 src="/monster-huddle-logo.png"
                 alt="Monster Huddle"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain drop-shadow-sm"
                 data-testid="header-logo"
               />
             </div>

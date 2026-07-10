@@ -79,8 +79,8 @@ export default function InstallPwaBanner({ language = 'en', role = 'user' }) {
         data-testid="install-pwa-banner"
       >
         <div className="flex items-start gap-3">
-          <div className="hidden sm:flex shrink-0 w-12 h-12 rounded-xl bg-white items-center justify-center overflow-hidden p-1">
-            <img src="/monster-huddle-logo.png" alt="" className="w-full h-full object-contain" />
+          <div className="hidden sm:flex shrink-0 w-12 h-12 items-center justify-center">
+            <img src="/monster-huddle-logo.png" alt="" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
 
           <div className="flex-1 min-w-0">

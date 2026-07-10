@@ -232,11 +232,11 @@ function Register({ onRegister }) {
       >
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-3 overflow-hidden p-1">
+          <div className="inline-flex items-center justify-center w-24 h-24 mb-3">
             <img
               src="/monster-huddle-logo.png"
               alt="Monster Huddle logo"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain drop-shadow-xl"
               data-testid="register-logo"
             />
           </div>
