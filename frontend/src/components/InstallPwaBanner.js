@@ -80,7 +80,7 @@ export default function InstallPwaBanner({ language = 'en', role = 'user' }) {
       >
         <div className="flex items-start gap-3">
           <div className="hidden sm:flex shrink-0 w-12 h-12 items-center justify-center">
-            <img src="/monster-huddle-logo.png" alt="" className="w-full h-full object-contain drop-shadow-sm" />
+            <img src="/monster-huddle-logo.png?v=3" alt="" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
 
           <div className="flex-1 min-w-0">

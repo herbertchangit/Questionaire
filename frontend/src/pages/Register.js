@@ -234,7 +234,7 @@ function Register({ onRegister }) {
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-24 h-24 mb-3">
             <img
-              src="/monster-huddle-logo.png"
+              src="/monster-huddle-logo.png?v=3"
               alt="Monster Huddle logo"
               className="w-full h-full object-contain drop-shadow-xl"
               data-testid="register-logo"

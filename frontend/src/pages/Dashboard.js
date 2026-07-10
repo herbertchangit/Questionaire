@@ -138,7 +138,7 @@ function Dashboard({ onSessionExpired }) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
               <img
-                src="/monster-huddle-logo.png"
+                src="/monster-huddle-logo.png?v=3"
                 alt="Monster Huddle"
                 className="w-full h-full object-contain drop-shadow-sm"
                 data-testid="header-logo"
@@ -225,7 +225,7 @@ function Dashboard({ onSessionExpired }) {
             data-testid="dashboard-mascot"
           >
             <img
-              src="/monster-huddle-logo.png"
+              src="/monster-huddle-logo.png?v=3"
               alt="Monster Huddle mascot"
               className="w-36 h-36 md:w-52 md:h-52 lg:w-56 lg:h-56 object-contain drop-shadow-xl"
             />
