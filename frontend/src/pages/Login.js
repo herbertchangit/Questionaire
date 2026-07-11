@@ -8,6 +8,7 @@ import { User, Lock, LogIn, Globe, Award, Eye, EyeOff } from 'lucide-react';
 import InstallPwaBanner from '../components/InstallPwaBanner';
 
 import { API_URL } from '../lib/api';
+import { APP_VERSION } from '../lib/version';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -240,6 +241,13 @@ function Login({ onLogin }) {
           <p>User: demo / demo123</p>
           <p>Admin: admin / admin123</p>
         </div>
+
+        <p
+          className="mt-4 text-center text-xs font-bold tracking-wide text-white/70"
+          data-testid="app-version"
+        >
+          v{APP_VERSION}
+        </p>
       </motion.div>
     </div>
   );
