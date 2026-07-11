@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   ArrowLeft, Crown, FileQuestion, Users, Bell, BarChart3, 
-  BookOpen, Landmark, FlaskConical, Trophy, Clock
+  BookOpen, Landmark, FlaskConical, Trophy, Clock, School
 } from 'lucide-react';
 
 import { API_URL } from '../../lib/api';
@@ -47,41 +47,107 @@ function AdminDashboard() {
     }
   };
 
+  const countLabel = (count, singular, plural, singularZh, pluralZh = singularZh) => {
+    const value = Number(count || 0);
+    if (language === 'zh') {
+      return `${value} ${value === 1 ? singularZh : pluralZh}`;
+    }
+    return `${value} ${value === 1 ? singular : plural}`;
+  };
+
+  const cardColors = {
+    violet: {
+      hover: 'hover:border-violet-300',
+      iconBg: 'bg-violet-100',
+      iconText: 'text-violet-500',
+      statBg: 'bg-violet-50',
+      statText: 'text-violet-600'
+    },
+    blue: {
+      hover: 'hover:border-blue-300',
+      iconBg: 'bg-blue-100',
+      iconText: 'text-blue-500',
+      statBg: 'bg-blue-50',
+      statText: 'text-blue-600'
+    },
+    cyan: {
+      hover: 'hover:border-cyan-300',
+      iconBg: 'bg-cyan-100',
+      iconText: 'text-cyan-500',
+      statBg: 'bg-cyan-50',
+      statText: 'text-cyan-600'
+    },
+    pink: {
+      hover: 'hover:border-pink-300',
+      iconBg: 'bg-pink-100',
+      iconText: 'text-pink-500',
+      statBg: 'bg-pink-50',
+      statText: 'text-pink-600'
+    },
+    green: {
+      hover: 'hover:border-green-300',
+      iconBg: 'bg-green-100',
+      iconText: 'text-green-500',
+      statBg: 'bg-green-50',
+      statText: 'text-green-600'
+    },
+    yellow: {
+      hover: 'hover:border-yellow-300',
+      iconBg: 'bg-yellow-100',
+      iconText: 'text-yellow-500',
+      statBg: 'bg-yellow-50',
+      statText: 'text-yellow-700'
+    }
+  };
+
   const menuItems = [
     { 
       icon: FileQuestion, 
       title: language === 'zh' ? '管理问题' : 'Manage Questions',
       desc: language === 'zh' ? '添加、编辑或删除测验问题' : 'Add, edit or delete quiz questions',
       path: '/admin/questions',
-      color: 'violet'
+      color: 'violet',
+      stat: countLabel(reports?.total_questions, 'question', 'questions', '题')
     },
     { 
       icon: Users, 
       title: language === 'zh' ? '管理用户' : 'Manage Users',
       desc: language === 'zh' ? '查看和管理用户账户' : 'View and manage user accounts',
       path: '/admin/users',
-      color: 'blue'
+      color: 'blue',
+      stat: countLabel(reports?.total_users, 'user', 'users', '用户')
+    },
+    { 
+      icon: School, 
+      title: language === 'zh' ? '管理学校' : 'Manage Schools',
+      desc: language === 'zh' ? '管理学校资料、徽标和组织架构' : 'Manage school profiles, logos and structure',
+      path: '/admin/schools',
+      color: 'cyan',
+      stat: countLabel(reports?.total_schools, 'school', 'schools', '学校')
     },
     { 
       icon: Bell, 
       title: language === 'zh' ? '管理通知' : 'Manage Notices',
       desc: language === 'zh' ? '创建公告和通知' : 'Create announcements and notices',
       path: '/admin/notices',
-      color: 'pink'
+      color: 'pink',
+      stat: countLabel(reports?.active_notices, 'active', 'active', '有效')
     },
     { 
       icon: BarChart3, 
       title: language === 'zh' ? '报告' : 'Reports',
       desc: language === 'zh' ? '查看详细分析' : 'View detailed analytics',
       path: '/admin/reports',
-      color: 'green'
+      color: 'green',
+      stat: countLabel(reports?.total_quizzes_completed, 'quiz', 'quizzes', '测验')
     },
     { 
       icon: Trophy, 
       title: language === 'zh' ? '锦标赛' : 'Tournaments',
       desc: language === 'zh' ? '安排实时锦标赛' : 'Schedule live tournaments',
       path: '/admin/tournaments',
-      color: 'yellow'
+      color: 'yellow',
+      stat: countLabel(reports?.total_tournaments, 'event', 'events', '赛事')
     }
   ];
 
@@ -138,52 +204,35 @@ function AdminDashboard() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
-            <p className="text-sm font-bold text-zinc-500 mb-1">
-              {language === 'zh' ? '总用户' : 'Total Users'}
-            </p>
-            <p className="text-3xl font-black text-zinc-900">{reports?.total_users || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
-            <p className="text-sm font-bold text-zinc-500 mb-1">
-              {language === 'zh' ? '完成测验' : 'Quizzes Done'}
-            </p>
-            <p className="text-3xl font-black text-zinc-900">{reports?.total_quizzes_completed || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
-            <p className="text-sm font-bold text-zinc-500 mb-1">
-              {language === 'zh' ? '7天活跃' : 'Active (7d)'}
-            </p>
-            <p className="text-3xl font-black text-zinc-900">{reports?.active_users_7d || 0}</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 border-2 border-zinc-200">
-            <p className="text-sm font-bold text-zinc-500 mb-1">
-              {language === 'zh' ? '科目数' : 'Subjects'}
-            </p>
-            <p className="text-3xl font-black text-zinc-900">3</p>
-          </div>
-        </div>
-
         {/* Menu Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {menuItems.map((item, index) => (
-            <motion.button
-              key={item.path}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
-              onClick={() => navigate(item.path)}
-              className={`bg-white rounded-2xl p-6 border-2 border-zinc-200 text-left hover:border-${item.color}-300 hover:shadow-md transition-all group`}
-            >
-              <div className={`w-12 h-12 rounded-xl bg-${item.color}-100 flex items-center justify-center mb-4`}>
-                <item.icon className={`w-6 h-6 text-${item.color}-500`} />
-              </div>
-              <h3 className="text-xl font-bold text-zinc-900 mb-1">{item.title}</h3>
-              <p className="text-sm text-zinc-500">{item.desc}</p>
-            </motion.button>
-          ))}
+          {menuItems.map((item, index) => {
+            const tone = cardColors[item.color];
+
+            return (
+              <motion.button
+                key={item.path}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+                onClick={() => navigate(item.path)}
+                className={`bg-white rounded-2xl p-6 border-2 border-zinc-200 text-left ${tone.hover} hover:shadow-md transition-all group`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className={`w-12 h-12 rounded-xl ${tone.iconBg} flex items-center justify-center mb-4`}>
+                      <item.icon className={`w-6 h-6 ${tone.iconText}`} />
+                    </div>
+                    <h3 className="text-xl font-bold text-zinc-900 mb-1">{item.title}</h3>
+                    <p className="text-sm text-zinc-500">{item.desc}</p>
+                  </div>
+                  <div className={`shrink-0 rounded-xl ${tone.statBg} px-3 py-2 text-right`}>
+                    <p className={`text-sm font-black ${tone.statText} whitespace-nowrap`}>{item.stat}</p>
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
 
         {/* Subject Stats */}

@@ -11,6 +11,25 @@ from models import User, UserCreate, UserLogin
 router = APIRouter(tags=["auth"])
 
 
+@router.get("/schools")
+async def list_registration_schools():
+    return (
+        await db.schools.find(
+            {},
+            {
+                "_id": 0,
+                "id": 1,
+                "school_name": 1,
+                "address": 1,
+                "education_level": 1,
+            },
+        )
+        .sort("school_name", 1)
+        .limit(500)
+        .to_list(500)
+    )
+
+
 @router.post("/auth/register")
 async def register(user_data: UserCreate):
     username_raw = user_data.username.strip()
@@ -55,6 +74,14 @@ async def register(user_data: UserCreate):
     if not (0 <= marks.bm <= 100 and 0 <= marks.sejarah <= 100 and 0 <= marks.science <= 100):
         raise HTTPException(status_code=400, detail="Marks must be between 0 and 100")
 
+    school_id = user_data.school_id
+    school_name = user_data.school_name.strip()
+    if school_id:
+        school = await db.schools.find_one({"id": school_id}, {"_id": 0})
+        if not school:
+            raise HTTPException(status_code=400, detail="Selected school was not found")
+        school_name = school["school_name"]
+
     user_id = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
@@ -62,7 +89,8 @@ async def register(user_data: UserCreate):
         "email": email,
         "password": pwd_context.hash(user_data.password),
         "full_name": user_data.full_name,
-        "school_name": user_data.school_name,
+        "school_id": school_id,
+        "school_name": school_name,
         "town": user_data.town,
         "current_grade": user_data.current_grade,
         "date_of_birth": user_data.date_of_birth,

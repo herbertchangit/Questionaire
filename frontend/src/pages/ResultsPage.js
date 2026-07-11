@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { Trophy, Star, Clock, CheckCircle, XCircle, ArrowRight, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import LevelUpModal from '../components/LevelUpModal';
+import { API_URL } from '../lib/api';
 
 function ResultsPage() {
   const { stageId } = useParams();
@@ -13,8 +15,9 @@ function ResultsPage() {
   const { language, t } = useLanguage();
   const { result, stage } = location.state || {};
   const [showLevelUp, setShowLevelUp] = useState(Boolean(result?.level_up_info));
+  const [nextStage, setNextStage] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (result?.score === result?.total) {
       // Perfect score celebration
       confetti({
@@ -24,6 +27,41 @@ function ResultsPage() {
       });
     }
   }, [result]);
+
+  useEffect(() => {
+    if (!result || !stage?.level_num || !stage?.stage_num) return;
+
+    let cancelled = false;
+
+    const fetchNextStage = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const response = await axios.get(`${API_URL}/api/levels/${stage.level_num}/stages`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (cancelled) return;
+
+        const stages = response.data?.stages || [];
+        const candidate = stages
+          .filter((item) => item.stage_num > stage.stage_num)
+          .sort((a, b) => a.stage_num - b.stage_num)[0];
+
+        setNextStage(candidate?.is_unlocked ? candidate : null);
+      } catch (error) {
+        if (!cancelled) {
+          setNextStage(null);
+        }
+      }
+    };
+
+    fetchNextStage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [result, stage]);
 
   if (!result) {
     navigate('/dashboard');
@@ -154,19 +192,30 @@ function ResultsPage() {
         </motion.div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             onClick={() => navigate(`/play/${stageId}`)}
-            className="flex-1 bg-white border-2 border-zinc-200 text-zinc-700 font-bold py-4 px-6 rounded-xl hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2"
+            className="bg-white border-2 border-zinc-200 text-zinc-700 font-bold py-4 px-6 rounded-xl hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2"
+            data-testid="try-again-btn"
           >
             <RotateCcw className="w-5 h-5" />
             {t('try_again')}
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex-1 bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold py-4 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            className="bg-white border-2 border-zinc-200 text-zinc-700 font-bold py-4 px-6 rounded-xl hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2"
+            data-testid="results-dashboard-btn"
           >
             {t('dashboard')}
+            <ArrowRight className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => nextStage && navigate(`/play/${nextStage.id}`)}
+            disabled={!nextStage}
+            className="bg-gradient-to-r from-violet-500 to-pink-500 text-white font-bold py-4 px-6 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            data-testid="next-stage-btn"
+          >
+            {t('next_stage')}
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>

@@ -20,6 +20,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6, max_length=100)
     full_name: str = Field(min_length=2, max_length=100)
+    school_id: Optional[str] = None
     school_name: str = Field(min_length=2, max_length=200)
     town: str = Field(min_length=2, max_length=100)
     current_grade: int = Field(ge=1, le=6)
@@ -40,6 +41,7 @@ class User(BaseModel):
     username: str
     email: Optional[str] = None
     full_name: str
+    school_id: Optional[str] = None
     school_name: str
     town: str
     current_grade: int
@@ -126,3 +128,10 @@ class NoticeCreate(BaseModel):
     content_en: str
     content_zh: str
     type: str = "announcement"
+
+
+class SchoolCreate(BaseModel):
+    school_name: str = Field(min_length=2, max_length=200)
+    address: str = Field(min_length=2, max_length=500)
+    education_level: str = Field(min_length=2, max_length=100)
+    school_logo: Optional[str] = None

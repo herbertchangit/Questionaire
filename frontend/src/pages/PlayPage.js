@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
-import { Clock, ChevronRight, CheckCircle } from 'lucide-react';
+import { Clock, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 
 import { API_URL } from '../lib/api';
 
@@ -84,6 +84,20 @@ function PlayPage() {
     }
   };
 
+  const handleCancel = () => {
+    const hasProgress = Object.keys(answers).length > 0;
+    const message = language === 'zh'
+      ? '取消本次答题并返回阶段板？已选择的答案不会保存。'
+      : 'Cancel this attempt and return to the stage board? Selected answers will not be saved.';
+
+    if (hasProgress && !window.confirm(message)) {
+      return;
+    }
+
+    const levelNum = stage?.level_num;
+    navigate(levelNum ? `/level/${levelNum}` : '/dashboard');
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
@@ -132,12 +146,23 @@ function PlayPage() {
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50" data-testid="play-page">
       {/* Header with Timer */}
       <header className="bg-white/80 backdrop-blur-md border-b-2 border-zinc-200 py-4 px-4 sticky top-0 z-50">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div>
-            <span className="text-sm font-bold text-zinc-500">{t('question')}</span>
-            <span className="text-2xl font-black text-zinc-900 ml-2">
-              {currentIndex + 1} / {questions.length}
-            </span>
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={handleCancel}
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="cancel-quiz-btn"
+            >
+              <XCircle className="w-5 h-5" />
+              <span className="hidden sm:inline">{t('cancel')}</span>
+            </button>
+            <div>
+              <span className="text-sm font-bold text-zinc-500">{t('question')}</span>
+              <span className="text-2xl font-black text-zinc-900 ml-2">
+                {currentIndex + 1} / {questions.length}
+              </span>
+            </div>
           </div>
           
           <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold ${

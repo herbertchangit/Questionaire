@@ -29,6 +29,7 @@ import ManageNotices from './pages/admin/ManageNotices';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminReports from './pages/admin/AdminReports';
 import AdminTournaments from './pages/admin/AdminTournaments';
+import ManageSchools from './pages/admin/ManageSchools';
 
 import './App.css';
 
@@ -111,6 +112,7 @@ function App() {
             <Route path="/admin/users" element={isAuthenticated && user?.role === 'admin' ? <AdminUsers /> : <Navigate to="/login" />} />
             <Route path="/admin/reports" element={isAuthenticated && user?.role === 'admin' ? <AdminReports /> : <Navigate to="/login" />} />
             <Route path="/admin/tournaments" element={isAuthenticated && user?.role === 'admin' ? <AdminTournaments /> : <Navigate to="/login" />} />
+            <Route path="/admin/schools" element={isAuthenticated && user?.role === 'admin' ? <ManageSchools /> : <Navigate to="/login" />} />
             
             {/* Default Route */}
             <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />

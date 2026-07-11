@@ -1,4 +1,4 @@
-"""Admin routes: questions, notices, users, reports."""
+"""Admin routes: questions, schools, notices, users, reports."""
 import csv
 import io
 import uuid
@@ -8,9 +8,35 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 
 from core import db, get_admin_user
-from models import NoticeCreate, QuestionCreate, QuestionSequenceUpdate, User
+from models import NoticeCreate, QuestionCreate, QuestionSequenceUpdate, SchoolCreate, User
 
 router = APIRouter(tags=["admin"])
+
+
+def _default_school_organization() -> dict:
+    return {
+        "campus": {
+            "academic_year": [],
+            "grades": [],
+            "classes": [],
+            "teachers": [],
+            "students": [],
+            "facilities": [],
+        },
+        "departments": [],
+        "subjects": [],
+        "fees": [],
+        "settings": {},
+    }
+
+
+def _validate_school_logo(school_logo: Optional[str]):
+    if not school_logo:
+        return
+    if not school_logo.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="School logo must be an image data URL")
+    if len(school_logo) > 1_500_000:
+        raise HTTPException(status_code=413, detail="School logo too large. Max ~1MB.")
 
 
 # ---------------- Questions ----------------
@@ -283,6 +309,66 @@ async def bulk_upload_questions(
     }
 
 
+# ---------------- Schools ----------------
+
+@router.get("/admin/schools")
+async def get_admin_schools(admin: User = Depends(get_admin_user)):
+    return (
+        await db.schools.find({}, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(200)
+        .to_list(200)
+    )
+
+
+@router.post("/admin/schools")
+async def create_school(school: SchoolCreate, admin: User = Depends(get_admin_user)):
+    _validate_school_logo(school.school_logo)
+    now = datetime.now(timezone.utc).isoformat()
+    school_doc = {
+        "id": str(uuid.uuid4()),
+        "school_name": school.school_name.strip(),
+        "address": school.address.strip(),
+        "education_level": school.education_level.strip(),
+        "school_logo": school.school_logo,
+        "organization": _default_school_organization(),
+        "created_at": now,
+        "updated_at": now,
+        "created_by": admin.id,
+    }
+    await db.schools.insert_one(school_doc)
+    return {"message": "School created", "id": school_doc["id"]}
+
+
+@router.put("/admin/schools/{school_id}")
+async def update_school(
+    school_id: str, school: SchoolCreate, admin: User = Depends(get_admin_user)
+):
+    _validate_school_logo(school.school_logo)
+    existing = await db.schools.find_one({"id": school_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    update_doc = {
+        "school_name": school.school_name.strip(),
+        "address": school.address.strip(),
+        "education_level": school.education_level.strip(),
+        "school_logo": school.school_logo,
+        "organization": existing.get("organization") or _default_school_organization(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.schools.update_one({"id": school_id}, {"$set": update_doc})
+    return {"message": "School updated"}
+
+
+@router.delete("/admin/schools/{school_id}")
+async def delete_school(school_id: str, admin: User = Depends(get_admin_user)):
+    result = await db.schools.delete_one({"id": school_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="School not found")
+    return {"message": "School deleted"}
+
+
 # ---------------- Notices ----------------
 
 @router.post("/admin/notices")
@@ -361,6 +447,10 @@ async def delete_user(user_id: str, admin: User = Depends(get_admin_user)):
 async def get_admin_reports(admin: User = Depends(get_admin_user)):
     total_users = await db.users.count_documents({})
     total_quizzes = await db.quiz_history.count_documents({})
+    total_questions = await db.edu_questions.count_documents({})
+    total_schools = await db.schools.count_documents({})
+    active_notices = await db.notices.count_documents({"is_active": True})
+    total_tournaments = await db.tournaments.count_documents({})
 
     subject_stats = []
     subjects = await db.subjects.find({}, {"_id": 0}).to_list(100)
@@ -393,6 +483,10 @@ async def get_admin_reports(admin: User = Depends(get_admin_user)):
     return {
         "total_users": total_users,
         "total_quizzes_completed": total_quizzes,
+        "total_questions": total_questions,
+        "total_schools": total_schools,
+        "active_notices": active_notices,
+        "total_tournaments": total_tournaments,
         "active_users_7d": len(active_users),
         "subject_stats": subject_stats,
     }

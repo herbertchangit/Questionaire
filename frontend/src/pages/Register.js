@@ -19,6 +19,7 @@ function Register({ onRegister }) {
     password: '',
     confirmPassword: '',
     full_name: '',
+    school_id: '',
     school_name: '',
     town: '',
     current_grade: 1,
@@ -32,6 +33,8 @@ function Register({ onRegister }) {
   const [formData, setFormData] = useState(initialFormState);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [schools, setSchools] = useState([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const { language, toggleLanguage, t } = useLanguage();
@@ -44,6 +47,33 @@ function Register({ onRegister }) {
     setShowPassword(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSchools = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/schools`);
+        if (!cancelled) {
+          setSchools(response.data || []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(language === 'zh' ? '无法加载学校列表' : 'Failed to load school list');
+        }
+      } finally {
+        if (!cancelled) {
+          setSchoolsLoading(false);
+        }
+      }
+    };
+
+    fetchSchools();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
 
   const grades = [
     { value: 1, label: language === 'zh' ? '中一 (Form 1)' : 'Form 1' },
@@ -68,6 +98,18 @@ function Register({ onRegister }) {
       ...prev,
       latest_marks: { ...prev.latest_marks, [subject]: numValue }
     }));
+  };
+
+  const updateSchoolSelection = (schoolId) => {
+    const selectedSchool = schools.find((school) => school.id === schoolId);
+    setFormData(prev => ({
+      ...prev,
+      school_id: schoolId,
+      school_name: selectedSchool?.school_name || ''
+    }));
+    if (errors.school_name) {
+      setErrors(prev => ({ ...prev, school_name: null }));
+    }
   };
 
   const validateStep1 = () => {
@@ -121,8 +163,12 @@ function Register({ onRegister }) {
       newErrors.full_name = language === 'zh' ? '请输入全名' : 'Full name is required';
     }
     
-    if (!formData.school_name.trim()) {
-      newErrors.school_name = language === 'zh' ? '请输入学校名称' : 'School name is required';
+    if (schoolsLoading) {
+      newErrors.school_name = language === 'zh' ? '学校列表仍在加载' : 'School list is still loading';
+    } else if (schools.length === 0) {
+      newErrors.school_name = language === 'zh' ? '暂无可选择的学校，请联系管理员' : 'No schools available. Please contact an administrator.';
+    } else if (!formData.school_id || !formData.school_name.trim()) {
+      newErrors.school_name = language === 'zh' ? '请选择学校' : 'Please select a school';
     }
     
     if (!formData.town.trim()) {
@@ -180,6 +226,7 @@ function Register({ onRegister }) {
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
         full_name: formData.full_name,
+        school_id: formData.school_id,
         school_name: formData.school_name,
         town: formData.town,
         current_grade: formData.current_grade,
@@ -404,15 +451,29 @@ function Register({ onRegister }) {
                   </label>
                   <div className="relative">
                     <School className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-                    <input
-                      type="text"
-                      value={formData.school_name}
-                      onChange={(e) => updateFormData('school_name', e.target.value)}
+                    <select
+                      value={formData.school_id}
+                      onChange={(e) => updateSchoolSelection(e.target.value)}
+                      disabled={schoolsLoading || schools.length === 0}
                       className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
                         errors.school_name ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
-                      }`}
-                      placeholder={language === 'zh' ? '您的学校' : 'Your school'}
-                    />
+                      } disabled:bg-zinc-100 disabled:text-zinc-400`}
+                      data-testid="school-select"
+                    >
+                      <option value="">
+                        {schoolsLoading
+                          ? (language === 'zh' ? '正在加载学校...' : 'Loading schools...')
+                          : schools.length === 0
+                            ? (language === 'zh' ? '暂无可选择的学校' : 'No schools available')
+                            : (language === 'zh' ? '请选择学校' : 'Select your school')}
+                      </option>
+                      {schools.map((school) => (
+                        <option key={school.id} value={school.id}>
+                          {school.school_name}
+                          {school.education_level ? ` - ${school.education_level}` : ''}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   {errors.school_name && <p className="text-red-500 text-xs mt-1">{errors.school_name}</p>}
                 </div>
