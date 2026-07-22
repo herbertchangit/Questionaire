@@ -24,6 +24,8 @@ class UserCreate(BaseModel):
     school_name: str = Field(min_length=2, max_length=200)
     town: str = Field(min_length=2, max_length=100)
     current_grade: int = Field(ge=1, le=6)
+    current_form: Optional[str] = None
+    class_name: Optional[str] = None
     date_of_birth: str  # YYYY-MM-DD
     latest_marks: LatestMarks
     language: str = "en"
@@ -45,6 +47,8 @@ class User(BaseModel):
     school_name: str
     town: str
     current_grade: int
+    current_form: Optional[str] = None
+    class_name: Optional[str] = None
     date_of_birth: str
     latest_marks: Dict[str, int] = {}
     role: str = "user"
@@ -81,6 +85,8 @@ class UserProfileUpdate(BaseModel):
     school_name: Optional[str] = None
     town: Optional[str] = None
     current_grade: Optional[int] = None
+    current_form: Optional[str] = None
+    class_name: Optional[str] = None
     date_of_birth: Optional[str] = None
     latest_marks: Optional[LatestMarks] = None
     language: Optional[str] = None
@@ -130,8 +136,16 @@ class NoticeCreate(BaseModel):
     type: str = "announcement"
 
 
+class SchoolFormCreate(BaseModel):
+    form_name: str = Field(min_length=1, max_length=100)
+    classes: List[str] = Field(default_factory=list)
+
+
 class SchoolCreate(BaseModel):
     school_name: str = Field(min_length=2, max_length=200)
     address: str = Field(min_length=2, max_length=500)
     education_level: str = Field(min_length=2, max_length=100)
+    forms: List[str] = Field(default_factory=list)
+    classes: List[str] = Field(default_factory=list)
+    form_classes: List[SchoolFormCreate] = Field(default_factory=list)
     school_logo: Optional[str] = None

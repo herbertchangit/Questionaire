@@ -22,6 +22,9 @@ async def list_registration_schools():
                 "school_name": 1,
                 "address": 1,
                 "education_level": 1,
+                "forms": 1,
+                "classes": 1,
+                "form_classes": 1,
             },
         )
         .sort("school_name", 1)
@@ -93,6 +96,8 @@ async def register(user_data: UserCreate):
         "school_name": school_name,
         "town": user_data.town,
         "current_grade": user_data.current_grade,
+        "current_form": user_data.current_form,
+        "class_name": user_data.class_name,
         "date_of_birth": user_data.date_of_birth,
         "latest_marks": {"bm": marks.bm, "sejarah": marks.sejarah, "science": marks.science},
         "role": "user",

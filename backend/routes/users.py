@@ -39,6 +39,10 @@ async def update_profile(
         if not (1 <= profile_data.current_grade <= 6):
             raise HTTPException(status_code=400, detail="Grade must be between 1 and 6")
         update_fields["current_grade"] = profile_data.current_grade
+    if profile_data.current_form is not None:
+        update_fields["current_form"] = profile_data.current_form.strip()
+    if profile_data.class_name is not None:
+        update_fields["class_name"] = profile_data.class_name.strip()
     if profile_data.date_of_birth:
         try:
             dob = datetime.strptime(profile_data.date_of_birth, "%Y-%m-%d")

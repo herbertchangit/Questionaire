@@ -2,14 +2,17 @@
   "name": "Monster Huddle",
   "short_name": "Monster Huddle",
   "description": "Bilingual gamified learning for secondary-school students — solo levels + LIVE multiplayer competitions.",
+  "id": "/?app=monster-huddle",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#f3f0ff",
   "theme_color": "#7c3aed",
   "lang": "en",
   "categories": ["education", "games", "kids"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",

@@ -8,10 +8,11 @@
  *     (auth tokens + dynamic data must always go to the network).
  *   - Old caches are purged on activate.
  */
-const CACHE_VERSION = 'monster-huddle-v6';
+const CACHE_VERSION = 'monster-huddle-v7';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
+  '/offline.html',
   '/manifest.json',
   '/monster-huddle-logo.png',
   '/monster-huddle-transparent.png',
@@ -58,6 +59,23 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) return;
   if (url.origin !== self.location.origin) return;
 
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok && res.type === 'basic') {
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put('/index.html', copy));
+          }
+          return res;
+        })
+        .catch(() =>
+          caches.match('/index.html').then((cached) => cached || caches.match('/offline.html'))
+        )
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(req)
       .then((res) => {
@@ -68,7 +86,7 @@ self.addEventListener('fetch', (event) => {
         return res;
       })
       .catch(() =>
-        caches.match(req).then((cached) => cached || caches.match('/index.html'))
+        caches.match(req).then((cached) => cached || caches.match('/offline.html'))
       )
   );
 });

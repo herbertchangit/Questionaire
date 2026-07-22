@@ -30,6 +30,65 @@ def _default_school_organization() -> dict:
     }
 
 
+def _clean_school_items(items: list[str]) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for item in items or []:
+        value = str(item).strip()
+        key = value.lower()
+        if value and key not in seen:
+            cleaned.append(value)
+            seen.add(key)
+    return cleaned[:100]
+
+
+def _clean_school_form_classes(school: SchoolCreate) -> list[dict]:
+    cleaned: list[dict] = []
+    seen_forms: set[str] = set()
+
+    for group in school.form_classes or []:
+        form_name = group.form_name.strip()
+        key = form_name.lower()
+        if not form_name or key in seen_forms:
+            continue
+        cleaned.append(
+            {
+                "form_name": form_name,
+                "classes": _clean_school_items(group.classes),
+            }
+        )
+        seen_forms.add(key)
+
+    if cleaned:
+        return cleaned[:100]
+
+    return [{"form_name": form, "classes": []} for form in _clean_school_items(school.forms)]
+
+
+def _flatten_school_forms(form_classes: list[dict]) -> list[str]:
+    return [group["form_name"] for group in form_classes]
+
+
+def _flatten_school_classes(form_classes: list[dict]) -> list[str]:
+    flattened: list[str] = []
+    seen: set[str] = set()
+    for group in form_classes:
+        for class_name in group.get("classes", []):
+            key = class_name.lower()
+            if key not in seen:
+                flattened.append(class_name)
+                seen.add(key)
+    return flattened
+
+
+def _school_organization(form_classes: list[dict], existing: Optional[dict] = None) -> dict:
+    organization = existing or _default_school_organization()
+    campus = organization.setdefault("campus", {})
+    campus["grades"] = _flatten_school_forms(form_classes)
+    campus["classes"] = form_classes
+    return organization
+
+
 def _validate_school_logo(school_logo: Optional[str]):
     if not school_logo:
         return
@@ -325,13 +384,19 @@ async def get_admin_schools(admin: User = Depends(get_admin_user)):
 async def create_school(school: SchoolCreate, admin: User = Depends(get_admin_user)):
     _validate_school_logo(school.school_logo)
     now = datetime.now(timezone.utc).isoformat()
+    form_classes = _clean_school_form_classes(school)
+    forms = _flatten_school_forms(form_classes)
+    classes = _flatten_school_classes(form_classes)
     school_doc = {
         "id": str(uuid.uuid4()),
         "school_name": school.school_name.strip(),
         "address": school.address.strip(),
         "education_level": school.education_level.strip(),
+        "forms": forms,
+        "classes": classes,
+        "form_classes": form_classes,
         "school_logo": school.school_logo,
-        "organization": _default_school_organization(),
+        "organization": _school_organization(form_classes),
         "created_at": now,
         "updated_at": now,
         "created_by": admin.id,
@@ -349,12 +414,18 @@ async def update_school(
     if not existing:
         raise HTTPException(status_code=404, detail="School not found")
 
+    form_classes = _clean_school_form_classes(school)
+    forms = _flatten_school_forms(form_classes)
+    classes = _flatten_school_classes(form_classes)
     update_doc = {
         "school_name": school.school_name.strip(),
         "address": school.address.strip(),
         "education_level": school.education_level.strip(),
+        "forms": forms,
+        "classes": classes,
+        "form_classes": form_classes,
         "school_logo": school.school_logo,
-        "organization": existing.get("organization") or _default_school_organization(),
+        "organization": _school_organization(form_classes, existing.get("organization")),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.schools.update_one({"id": school_id}, {"$set": update_doc})

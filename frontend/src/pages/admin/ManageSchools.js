@@ -25,6 +25,7 @@ const emptyForm = {
   school_name: '',
   address: '',
   education_level: '',
+  form_classes: [{ form_name: '', classes: [''] }],
   school_logo: ''
 };
 
@@ -51,6 +52,13 @@ function labels(language) {
     schoolName: zh ? '学校名称' : 'School Name',
     address: zh ? '地址' : 'Address',
     educationLevel: zh ? '教育阶段' : 'Education Level',
+    forms: zh ? '年级' : 'Form',
+    classes: zh ? '班级' : 'Class',
+    addForm: zh ? '添加年级' : 'Add Form',
+    addClass: zh ? '添加班级' : 'Add Class',
+    formName: zh ? '年级名称' : 'Form Name',
+    className: zh ? '班级名称' : 'Class Name',
+    remove: zh ? '移除' : 'Remove',
     logo: zh ? '学校徽标' : 'School Logo',
     upload: zh ? '上传徽标' : 'Upload Logo',
     removeLogo: zh ? '移除徽标' : 'Remove Logo',
@@ -78,7 +86,62 @@ function authHeaders() {
   };
 }
 
-function OrganizationTree({ copy }) {
+function cleanList(values) {
+  return (values || []).map((value) => String(value).trim()).filter(Boolean);
+}
+
+function normalizeFormClasses(schoolRecord = {}) {
+  if (Array.isArray(schoolRecord.form_classes) && schoolRecord.form_classes.length > 0) {
+    return schoolRecord.form_classes.map((group) => ({
+      form_name: String(group.form_name || '').trim(),
+      classes: cleanList(group.classes).length ? cleanList(group.classes) : ['']
+    }));
+  }
+
+  const legacyForms = cleanList(schoolRecord.forms);
+  const legacyClasses = cleanList(schoolRecord.classes);
+  if (legacyForms.length > 0) {
+    return legacyForms.map((formName, index) => ({
+      form_name: formName,
+      classes: index === 0 && legacyClasses.length > 0 ? legacyClasses : ['']
+    }));
+  }
+
+  return [{ form_name: '', classes: [''] }];
+}
+
+function cleanFormClasses(formClasses) {
+  const seenForms = new Set();
+  return (formClasses || [])
+    .map((group) => ({
+      form_name: String(group.form_name || '').trim(),
+      classes: cleanList(group.classes)
+    }))
+    .filter((group) => {
+      const key = group.form_name.toLowerCase();
+      if (!group.form_name || seenForms.has(key)) return false;
+      seenForms.add(key);
+      return true;
+    });
+}
+
+function flattenClasses(formClasses) {
+  const seen = new Set();
+  const classes = [];
+  cleanFormClasses(formClasses).forEach((group) => {
+    group.classes.forEach((className) => {
+      const key = className.toLowerCase();
+      if (!seen.has(key)) {
+        classes.push(className);
+        seen.add(key);
+      }
+    });
+  });
+  return classes;
+}
+
+function OrganizationTree({ copy, formClasses = [] }) {
+  const visibleFormClasses = cleanFormClasses(formClasses);
   return (
     <div className="rounded-xl border-2 border-zinc-200 bg-zinc-50 p-4">
       <div className="flex items-center gap-2 font-black text-zinc-900">
@@ -109,6 +172,26 @@ function OrganizationTree({ copy }) {
             </div>
           ))}
         </div>
+        {visibleFormClasses.length > 0 && (
+          <div className="mt-4 grid gap-3 rounded-lg bg-white p-3">
+            {visibleFormClasses.map((group) => (
+              <div key={group.form_name}>
+                <div className="text-xs font-black uppercase text-zinc-400">{group.form_name}</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {group.classes.length > 0 ? (
+                    group.classes.map((className) => (
+                      <span key={className} className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                        {className}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-zinc-400">{copy.classes}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -151,6 +234,7 @@ function ManageSchools() {
       school_name: schoolRecord.school_name || '',
       address: schoolRecord.address || '',
       education_level: schoolRecord.education_level || '',
+      form_classes: normalizeFormClasses(schoolRecord),
       school_logo: schoolRecord.school_logo || ''
     });
     setShowForm(true);
@@ -174,14 +258,83 @@ function ManageSchools() {
     reader.readAsDataURL(file);
   };
 
+  const updateFormName = (formIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      form_classes: current.form_classes.map((group, index) => (
+        index === formIndex ? { ...group, form_name: value } : group
+      ))
+    }));
+  };
+
+  const addFormGroup = () => {
+    setFormData((current) => ({
+      ...current,
+      form_classes: [...current.form_classes, { form_name: '', classes: [''] }]
+    }));
+  };
+
+  const removeFormGroup = (formIndex) => {
+    setFormData((current) => {
+      const next = current.form_classes.filter((_, index) => index !== formIndex);
+      return {
+        ...current,
+        form_classes: next.length ? next : [{ form_name: '', classes: [''] }]
+      };
+    });
+  };
+
+  const updateClassName = (formIndex, classIndex, value) => {
+    setFormData((current) => ({
+      ...current,
+      form_classes: current.form_classes.map((group, index) => (
+        index === formIndex
+          ? {
+              ...group,
+              classes: group.classes.map((className, itemIndex) => (
+                itemIndex === classIndex ? value : className
+              ))
+            }
+          : group
+      ))
+    }));
+  };
+
+  const addClassToForm = (formIndex) => {
+    setFormData((current) => ({
+      ...current,
+      form_classes: current.form_classes.map((group, index) => (
+        index === formIndex ? { ...group, classes: [...group.classes, ''] } : group
+      ))
+    }));
+  };
+
+  const removeClassFromForm = (formIndex, classIndex) => {
+    setFormData((current) => ({
+      ...current,
+      form_classes: current.form_classes.map((group, index) => {
+        if (index !== formIndex) return group;
+        const nextClasses = group.classes.filter((_, itemIndex) => itemIndex !== classIndex);
+        return { ...group, classes: nextClasses.length ? nextClasses : [''] };
+      })
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const formClasses = cleanFormClasses(formData.form_classes);
+    const payload = {
+      ...formData,
+      form_classes: formClasses,
+      forms: formClasses.map((group) => group.form_name),
+      classes: flattenClasses(formClasses)
+    };
     try {
       if (editingSchool) {
-        await axios.put(`${API_URL}/api/admin/schools/${editingSchool.id}`, formData, authHeaders());
+        await axios.put(`${API_URL}/api/admin/schools/${editingSchool.id}`, payload, authHeaders());
         toast.success(copy.updated);
       } else {
-        await axios.post(`${API_URL}/api/admin/schools`, formData, authHeaders());
+        await axios.post(`${API_URL}/api/admin/schools`, payload, authHeaders());
         toast.success(copy.created);
       }
       setShowForm(false);
@@ -274,6 +427,25 @@ function ManageSchools() {
                             {schoolRecord.address}
                           </span>
                         </div>
+                        {cleanFormClasses(normalizeFormClasses(schoolRecord)).length > 0 && (
+                          <div className="mt-3 grid gap-2">
+                            {cleanFormClasses(normalizeFormClasses(schoolRecord)).map((group) => (
+                              <div key={group.form_name} className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                                  {copy.forms}: {group.form_name}
+                                </span>
+                                {group.classes.map((className) => (
+                                  <span
+                                    key={`${group.form_name}-${className}`}
+                                    className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700"
+                                  >
+                                    {className}
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -359,6 +531,78 @@ function ManageSchools() {
               </div>
 
               <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label className="block text-sm font-bold text-zinc-700">{copy.forms}</label>
+                  <button
+                    type="button"
+                    onClick={addFormGroup}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-violet-600 hover:bg-violet-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {copy.addForm}
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {formData.form_classes.map((group, formIndex) => (
+                    <div key={`form-group-${formIndex}`} className="rounded-xl border-2 border-zinc-200 bg-zinc-50 p-3">
+                      <div className="flex gap-2">
+                        <input
+                          value={group.form_name}
+                          onChange={(event) => updateFormName(formIndex, event.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border-2 border-zinc-200 bg-white px-3 py-2"
+                          placeholder="Form 1"
+                          aria-label={copy.formName}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFormGroup(formIndex)}
+                          className="rounded-lg p-2 text-red-500 hover:bg-red-50"
+                          title={copy.remove}
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <div className="mt-3">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <label className="block text-xs font-black uppercase text-zinc-500">{copy.classes}</label>
+                          <button
+                            type="button"
+                            onClick={() => addClassToForm(formIndex)}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-blue-600 hover:bg-blue-50"
+                          >
+                            <Plus className="h-4 w-4" />
+                            {copy.addClass}
+                          </button>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {group.classes.map((className, classIndex) => (
+                            <div key={`class-input-${formIndex}-${classIndex}`} className="flex gap-2">
+                              <input
+                                value={className}
+                                onChange={(event) => updateClassName(formIndex, classIndex, event.target.value)}
+                                className="min-w-0 flex-1 rounded-lg border-2 border-zinc-200 bg-white px-3 py-2"
+                                placeholder="1P1"
+                                aria-label={copy.className}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeClassFromForm(formIndex, classIndex)}
+                                className="rounded-lg p-2 text-red-500 hover:bg-red-50"
+                                title={copy.remove}
+                              >
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="mb-2 block text-sm font-bold text-zinc-700">{copy.logo}</label>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border-2 border-zinc-200 bg-zinc-50">
@@ -385,7 +629,7 @@ function ManageSchools() {
                 </div>
               </div>
 
-              <OrganizationTree copy={copy} />
+              <OrganizationTree copy={copy} formClasses={formData.form_classes} />
 
               <div className="flex gap-3 pt-3">
                 <button
