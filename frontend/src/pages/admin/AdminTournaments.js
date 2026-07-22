@@ -91,7 +91,7 @@ function AdminTournaments() {
       <header className="bg-gradient-to-r from-yellow-400 to-orange-500 py-6 px-4">
         <div className="max-w-3xl mx-auto">
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-white/80 hover:text-white mb-3 font-medium"
           >
             <ArrowLeft className="w-5 h-5" />

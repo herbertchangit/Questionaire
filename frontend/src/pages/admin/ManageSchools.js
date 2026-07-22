@@ -362,7 +362,7 @@ function ManageSchools() {
       <header className="border-b-2 border-zinc-200 bg-white/80 px-4 py-6 backdrop-blur-md">
         <div className="mx-auto max-w-5xl">
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/dashboard')}
             className="mb-4 flex items-center gap-2 font-medium text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft className="h-5 w-5" />

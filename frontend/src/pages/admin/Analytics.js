@@ -92,7 +92,7 @@ function Analytics() {
                 Refresh
               </button>
               <button
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/dashboard')}
                 className="bg-white text-zinc-950 font-bold px-6 py-3 rounded-xl neo-border neo-shadow hover:translate-y-1 hover:shadow-none flex items-center gap-2"
                 data-testid="back-button"
               >

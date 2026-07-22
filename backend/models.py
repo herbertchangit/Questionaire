@@ -82,6 +82,7 @@ class ProfilePictureUpdate(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None
+    school_id: Optional[str] = None
     school_name: Optional[str] = None
     town: Optional[str] = None
     current_grade: Optional[int] = None

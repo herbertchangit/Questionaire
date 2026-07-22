@@ -69,7 +69,7 @@ function CreateQuiz() {
           className="bg-white neo-border neo-shadow-deep rounded-2xl p-6 md:p-8 mb-8"
         >
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/dashboard')}
             className="bg-white neo-border neo-shadow px-4 py-2 rounded-xl font-bold hover:translate-y-1 hover:shadow-none flex items-center gap-2 mb-6"
             data-testid="back-to-admin-button"
           >

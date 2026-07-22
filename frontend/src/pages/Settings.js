@@ -104,8 +104,7 @@ function Settings() {
         classes: index === 0 ? selectedSchool?.classes || [] : []
       }));
 
-  const fallbackGrades = grades.map((grade) => ({ form_name: grade.label, classes: [] }));
-  const gradeOptions = schoolFormClasses.length ? schoolFormClasses : fallbackGrades;
+  const gradeOptions = schoolFormClasses;
   const selectedForm = gradeOptions.find((group) => (
     group.form_name === profileForm?.current_form ||
     parseGradeNumber(group.form_name) === profileForm?.current_grade
@@ -120,6 +119,36 @@ function Settings() {
   const updateProfileLanguage = (value) => {
     updateProfileField('language', value);
     persistLanguage(value);
+  };
+
+  const updateSchoolSelection = (schoolId) => {
+    const school = schools.find((item) => item.id === schoolId);
+    const forms = school?.form_classes?.length
+      ? school.form_classes
+      : (school?.forms || []).map((formName, index) => ({
+          form_name: formName,
+          classes: index === 0 ? school?.classes || [] : []
+        }));
+    const firstForm = forms[0];
+    const firstClass = firstForm?.classes?.[0] || '';
+
+    setProfileForm((prev) => ({
+      ...prev,
+      school_id: schoolId,
+      school_name: school?.school_name || 'None',
+      current_form: firstForm?.form_name || '',
+      current_grade: firstForm ? parseGradeNumber(firstForm.form_name) : prev.current_grade,
+      class_name: firstClass
+    }));
+
+    if (profileErrors.school_name || profileErrors.current_form || profileErrors.class_name) {
+      setProfileErrors((prev) => ({
+        ...prev,
+        school_name: null,
+        current_form: null,
+        class_name: null
+      }));
+    }
   };
 
   const updateCurrentForm = (formName) => {
@@ -146,10 +175,15 @@ function Settings() {
 
   const validateProfile = () => {
     const errs = {};
+    const selectedSchoolId = selectedSchool?.id || profileForm.school_id;
     if (!profileForm.full_name?.trim() || profileForm.full_name.length < 2)
       errs.full_name = language === 'zh' ? '至少2个字符' : 'At least 2 characters';
     if (!profileForm.school_name?.trim() || profileForm.school_name.length < 2)
       errs.school_name = language === 'zh' ? '至少2个字符' : 'At least 2 characters';
+    if (profile?.role !== 'admin' && !selectedSchoolId)
+      errs.school_name = language === 'zh' ? '请选择学校' : 'Please select a school';
+    if (selectedSchoolId && gradeOptions.length === 0)
+      errs.current_form = language === 'zh' ? '学校未设置年级' : 'Selected school has no grades configured';
     if (!profileForm.town?.trim() || profileForm.town.length < 2)
       errs.town = language === 'zh' ? '至少2个字符' : 'At least 2 characters';
     if (classOptions.length > 0 && !profileForm.class_name)
@@ -183,6 +217,7 @@ function Settings() {
         {
           full_name: profileForm.full_name.trim(),
           school_name: profileForm.school_name.trim(),
+          school_id: selectedSchool?.id || profileForm.school_id,
           town: profileForm.town.trim(),
           current_grade: profileForm.current_grade,
           current_form: profileForm.current_form,
@@ -274,7 +309,7 @@ function Settings() {
             <ArrowLeft className="w-5 h-5" />
             {t('back')}
           </button>
-          <h1 className="text-3xl font-black text-zinc-900">{t('settings')}</h1>
+          <h1 className="text-3xl font-black text-zinc-900">{language === 'zh' ? '个人资料' : 'Profiles'}</h1>
         </div>
       </header>
 
@@ -379,16 +414,27 @@ function Settings() {
               </label>
               <div className="relative">
                 <School className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-                <input
-                  type="text"
-                  value={profileForm.school_name}
-                  onChange={(e) => updateProfileField('school_name', e.target.value)}
+                <select
+                  value={selectedSchool?.id || profileForm.school_id}
+                  onChange={(e) => updateSchoolSelection(e.target.value)}
                   disabled={!editing}
-                  data-testid="profile-school-input"
-                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm ${
+                  data-testid="profile-school-select"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 focus:outline-none text-sm appearance-none ${
                     profileErrors.school_name ? 'border-red-300' : 'border-zinc-200 focus:border-violet-500'
                   } ${!editing ? 'bg-zinc-50 text-zinc-600' : ''}`}
-                />
+                >
+                  <option value="" disabled={profile?.role !== 'admin'}>
+                    {profile?.role === 'admin'
+                      ? (language === 'zh' ? '无' : 'None')
+                      : (language === 'zh' ? '请选择学校' : 'Select school')}
+                  </option>
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.school_name}
+                      {school.education_level ? ` - ${school.education_level}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
               {profileErrors.school_name && (
                 <p className="text-red-500 text-xs mt-1">{profileErrors.school_name}</p>
@@ -428,17 +474,24 @@ function Settings() {
                   <select
                     value={selectedForm?.form_name || profileForm.current_form}
                     onChange={(e) => updateCurrentForm(e.target.value)}
-                    disabled={!editing}
+                    disabled={!editing || gradeOptions.length === 0}
                     data-testid="profile-grade-select"
                     className={`w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-zinc-200 focus:border-violet-500 focus:outline-none text-sm appearance-none ${
-                      !editing ? 'bg-zinc-50 text-zinc-600' : ''
+                      !editing || gradeOptions.length === 0 ? 'bg-zinc-50 text-zinc-600' : ''
                     }`}
                   >
-                    {gradeOptions.map((g) => (
-                      <option key={g.form_name} value={g.form_name}>{g.form_name}</option>
-                    ))}
+                    {gradeOptions.length === 0 ? (
+                      <option value="">{language === 'zh' ? '暂无年级' : 'No grades'}</option>
+                    ) : (
+                      gradeOptions.map((g) => (
+                        <option key={g.form_name} value={g.form_name}>{g.form_name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
+                {profileErrors.current_form && (
+                  <p className="text-red-500 text-xs mt-1">{profileErrors.current_form}</p>
+                )}
               </div>
 
               <div>

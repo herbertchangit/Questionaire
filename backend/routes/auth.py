@@ -22,6 +22,7 @@ async def list_registration_schools():
                 "school_name": 1,
                 "address": 1,
                 "education_level": 1,
+                "school_logo": 1,
                 "forms": 1,
                 "classes": 1,
                 "form_classes": 1,

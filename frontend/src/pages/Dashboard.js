@@ -37,6 +37,7 @@ function Dashboard({ onSessionExpired }) {
   const [progression, setProgression] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState(null);
   const [notices, setNotices] = useState([]);
+  const [schoolLogo, setSchoolLogo] = useState('');
   const [loading, setLoading] = useState(true);
   const [showBirthday, setShowBirthday] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -77,12 +78,13 @@ function Dashboard({ onSessionExpired }) {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [userRes, statsRes, welcomeRes, noticesRes, progressionRes] = await Promise.all([
+      const [userRes, statsRes, welcomeRes, noticesRes, progressionRes, schoolsRes] = await Promise.all([
         axios.get(`${API_URL}/api/auth/me`, { headers }),
         axios.get(`${API_URL}/api/progress/stats`, { headers }),
         axios.get(`${API_URL}/api/welcome-message`, { headers }),
         axios.get(`${API_URL}/api/notices`),
-        axios.get(`${API_URL}/api/user/progression`, { headers })
+        axios.get(`${API_URL}/api/user/progression`, { headers }),
+        axios.get(`${API_URL}/api/schools`)
       ]);
 
       setUser(userRes.data);
@@ -90,6 +92,11 @@ function Dashboard({ onSessionExpired }) {
       setWelcomeMsg(welcomeRes.data);
       setNotices(noticesRes.data);
       setProgression(progressionRes.data);
+      const school = (schoolsRes.data || []).find((item) => (
+        (userRes.data.school_id && item.id === userRes.data.school_id) ||
+        item.school_name === userRes.data.school_name
+      ));
+      setSchoolLogo(school?.school_logo || '');
     } catch (error) {
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
@@ -152,7 +159,7 @@ function Dashboard({ onSessionExpired }) {
     {
       title: language === 'zh' ? '账户' : 'Account',
       items: [
-        { label: t('settings'), icon: Settings, path: '/settings', testId: 'side-settings' },
+        { label: language === 'zh' ? '个人资料' : 'Profile', icon: Settings, path: '/settings', testId: 'side-settings' },
         { label: language === 'zh' ? '退出登录' : 'Logout', icon: LogOut, action: handleLogout, danger: true, testId: 'side-logout' }
       ]
     }
@@ -259,15 +266,20 @@ function Dashboard({ onSessionExpired }) {
             <button
               onClick={() => navigate('/settings')}
               className="ml-1 hover:scale-105 transition-transform"
-              title={t('settings')}
+              title={language === 'zh' ? '个人资料' : 'Profile'}
               data-testid="header-avatar-btn"
             >
-              <Avatar
-                src={user?.profile_picture}
-                name={user?.full_name || user?.username}
-                size={36}
-                className="ring-2 ring-violet-200"
-              />
+              {schoolLogo ? (
+                <img
+                  src={schoolLogo}
+                  alt={user?.school_name || 'School'}
+                  className="h-9 w-9 rounded-full object-contain bg-white ring-2 ring-violet-200"
+                />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 ring-2 ring-violet-200">
+                  <School className="h-5 w-5 text-violet-600" />
+                </div>
+              )}
             </button>
           </div>
         </div>
@@ -287,7 +299,7 @@ function Dashboard({ onSessionExpired }) {
               <Menu className="h-5 w-5 text-violet-600" />
               {language === 'zh' ? '菜单' : 'Menu'}
             </span>
-            <span className="text-xs font-bold uppercase text-zinc-400">{user?.role || 'user'}</span>
+            <span className="max-w-[45vw] truncate text-xs font-bold text-zinc-400">{user?.username}</span>
           </button>
 
           {mobileMenuOpen && (
@@ -305,7 +317,7 @@ function Dashboard({ onSessionExpired }) {
                 />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-black text-zinc-900">{user?.full_name || user?.username}</p>
-                  <p className="text-xs font-bold uppercase text-zinc-400">{user?.role || 'user'}</p>
+                  <p className="truncate text-xs font-bold text-zinc-400">@{user?.username}</p>
                 </div>
               </div>
               <nav className="space-y-4">
@@ -327,7 +339,7 @@ function Dashboard({ onSessionExpired }) {
                 />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-black text-zinc-900">{user?.full_name || user?.username}</p>
-                  <p className="text-xs font-bold uppercase text-zinc-400">{user?.role || 'user'}</p>
+                  <p className="truncate text-xs font-bold text-zinc-400">@{user?.username}</p>
                 </div>
               </div>
 
@@ -347,10 +359,11 @@ function Dashboard({ onSessionExpired }) {
                 className="flex justify-center md:w-56 lg:w-64 shrink-0"
                 data-testid="dashboard-mascot"
               >
-                <img
-                  src="/monster-huddle-transparent.png"
-                  alt="Monster Huddle mascot"
-                  className="w-36 h-36 md:w-52 md:h-52 object-contain drop-shadow-xl"
+                <Avatar
+                  src={user?.profile_picture}
+                  name={user?.full_name || user?.username}
+                  size={190}
+                  className="ring-4 ring-white shadow-xl"
                 />
               </motion.div>
 

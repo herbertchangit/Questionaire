@@ -31,7 +31,22 @@ async def update_profile(
 
     if profile_data.full_name:
         update_fields["full_name"] = profile_data.full_name
-    if profile_data.school_name:
+    if profile_data.school_id is not None:
+        school_id = profile_data.school_id.strip()
+        if school_id:
+            school = await db.schools.find_one({"id": school_id}, {"_id": 0})
+            if not school:
+                raise HTTPException(status_code=400, detail="Selected school was not found")
+            update_fields["school_id"] = school_id
+            update_fields["school_name"] = school["school_name"]
+        elif current_user.role == "admin":
+            update_fields["school_id"] = None
+            update_fields["school_name"] = "None"
+            update_fields["current_form"] = ""
+            update_fields["class_name"] = ""
+        else:
+            raise HTTPException(status_code=400, detail="School is required")
+    elif profile_data.school_name:
         update_fields["school_name"] = profile_data.school_name
     if profile_data.town:
         update_fields["town"] = profile_data.town

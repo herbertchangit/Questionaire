@@ -51,7 +51,7 @@ function AdminReports() {
       <header className="bg-white/80 backdrop-blur-md border-b-2 border-zinc-200 py-6 px-4">
         <div className="max-w-4xl mx-auto">
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 mb-4 font-medium"
           >
             <ArrowLeft className="w-5 h-5" />
