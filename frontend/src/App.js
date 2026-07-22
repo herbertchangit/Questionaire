@@ -12,6 +12,7 @@ import Register from './pages/Register';
 
 // Main Pages
 import Dashboard from './pages/Dashboard';
+import Levels from './pages/Levels';
 import LevelPage from './pages/LevelPage';
 import PlayPage from './pages/PlayPage';
 import ResultsPage from './pages/ResultsPage';
@@ -95,6 +96,7 @@ function App() {
             
             {/* Main Routes */}
             <Route path="/dashboard" element={isAuthenticated ? <Dashboard onSessionExpired={handleSessionExpired} /> : <Navigate to="/login" />} />
+            <Route path="/levels" element={isAuthenticated ? <Levels /> : <Navigate to="/login" />} />
             <Route path="/level/:levelNum" element={isAuthenticated ? <LevelPage /> : <Navigate to="/login" />} />
             <Route path="/play/:stageId" element={isAuthenticated ? <PlayPage /> : <Navigate to="/login" />} />
             <Route path="/results/:stageId" element={isAuthenticated ? <ResultsPage /> : <Navigate to="/login" />} />
