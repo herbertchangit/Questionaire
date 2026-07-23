@@ -109,6 +109,9 @@ class QuizSubmission(BaseModel):
 
 class QuestionCreate(BaseModel):
     subject_id: str
+    form_name: Optional[str] = None
+    chapter: Optional[str] = None
+    branch: Optional[str] = None
     level_num: int
     stage_num: int
     text_en: str
@@ -150,3 +153,14 @@ class SchoolCreate(BaseModel):
     classes: List[str] = Field(default_factory=list)
     form_classes: List[SchoolFormCreate] = Field(default_factory=list)
     school_logo: Optional[str] = None
+
+
+class SubjectCreate(BaseModel):
+    name_en: str = Field(min_length=2, max_length=200)
+    name_zh: Optional[str] = Field(default=None, max_length=200)
+    school_id: str = Field(min_length=1, max_length=100)
+    form_name: str = Field(min_length=1, max_length=100)
+    chapters: List[str] = Field(default_factory=list)
+    icon: str = Field(default="book-open", max_length=50)
+    color: str = Field(default="#8B5CF6", max_length=20)
+    is_active: bool = True

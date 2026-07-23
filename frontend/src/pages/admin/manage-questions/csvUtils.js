@@ -14,7 +14,7 @@ const escapeCsv = (val) => {
 };
 
 const HEADERS = [
-  'id', 'sequence_number', 'subject_id', 'subject_name', 'level_num', 'stage_num', 'difficulty',
+  'id', 'sequence_number', 'subject_id', 'subject_name', 'form_name', 'chapter', 'branch', 'level_num', 'stage_num', 'difficulty',
   'story_board_en', 'story_board_zh',
   'text_en', 'text_zh',
   'option_a_en', 'option_b_en', 'option_c_en', 'option_d_en',
@@ -40,6 +40,9 @@ export function exportQuestionsCsv(rows, language = 'en') {
       q.sequence_number ?? 0,
       q.subject_id,
       subjName,
+      q.form_name || '',
+      q.chapter || '',
+      q.branch || '',
       q.level_num,
       q.stage_num,
       q.difficulty || 'apprentice',

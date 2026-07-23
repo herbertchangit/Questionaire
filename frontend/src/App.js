@@ -31,6 +31,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminReports from './pages/admin/AdminReports';
 import AdminTournaments from './pages/admin/AdminTournaments';
 import ManageSchools from './pages/admin/ManageSchools';
+import ManageSubjects from './pages/admin/ManageSubjects';
 
 import './App.css';
 
@@ -115,6 +116,7 @@ function App() {
             <Route path="/admin/reports" element={isAuthenticated && user?.role === 'admin' ? <AdminReports /> : <Navigate to="/login" />} />
             <Route path="/admin/tournaments" element={isAuthenticated && user?.role === 'admin' ? <AdminTournaments /> : <Navigate to="/login" />} />
             <Route path="/admin/schools" element={isAuthenticated && user?.role === 'admin' ? <ManageSchools /> : <Navigate to="/login" />} />
+            <Route path="/admin/subjects" element={isAuthenticated && user?.role === 'admin' ? <ManageSubjects /> : <Navigate to="/login" />} />
             
             {/* Default Route */}
             <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />

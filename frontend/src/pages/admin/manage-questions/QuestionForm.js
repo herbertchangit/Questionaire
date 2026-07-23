@@ -31,6 +31,8 @@ export default function QuestionForm({
   onSaved,
   onClose,
 }) {
+  const selectedForm = String(formData.form_name || '1').replace(/^Form\s*/i, '');
+
   const handleSave = async () => {
     // Validate: at least 2 English options (A & B) required
     const optsEn = formData.options_en.map((o) => (o || '').trim());
@@ -60,6 +62,9 @@ export default function QuestionForm({
 
     const payload = {
       ...formData,
+      form_name: selectedForm || '1',
+      chapter: (formData.chapter || '').trim(),
+      branch: (formData.branch || '').trim(),
       text_en: formData.text_en.trim(),
       text_zh: textZh,
       options_en: optsEn,
@@ -139,7 +144,20 @@ export default function QuestionForm({
           }}
           className="space-y-4"
         >
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-bold mb-1">
+                {language === 'zh' ? '序号' : 'Sequence Number'}
+              </label>
+              <input
+                type="number"
+                value={formData.sequence_number}
+                onChange={(e) => setFormData({ ...formData, sequence_number: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
+                min={0}
+                data-testid="form-sequence-number"
+              />
+            </div>
             <div>
               <label className="block text-sm font-bold mb-1">Subject</label>
               <select
@@ -150,6 +168,33 @@ export default function QuestionForm({
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Form</label>
+              <select
+                value={selectedForm || '1'}
+                onChange={(e) => setFormData({ ...formData, form_name: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
+                data-testid="question-form-select"
+              >
+                {[1, 2, 3, 4, 5, 6].map((form) => (
+                  <option key={form} value={`${form}`}>{form}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Chapter</label>
+              <input
+                type="text"
+                value={formData.chapter || ''}
+                onChange={(e) => setFormData({ ...formData, chapter: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
+                placeholder={language === 'zh' ? '章节' : 'Chapter'}
+                data-testid="question-chapter-input"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-bold mb-1">Level</label>
               <select
@@ -169,6 +214,17 @@ export default function QuestionForm({
               >
                 {[1, 2, 3, 4, 5].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Branch</label>
+              <input
+                type="text"
+                value={formData.branch || ''}
+                onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
+                placeholder={language === 'zh' ? '分支' : 'Branch'}
+                data-testid="question-branch-input"
+              />
             </div>
           </div>
 
@@ -269,7 +325,7 @@ export default function QuestionForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold mb-1">Correct Answer</label>
               <select
@@ -279,19 +335,6 @@ export default function QuestionForm({
               >
                 {[0, 1, 2, 3].map((i) => <option key={i} value={i}>Option {String.fromCharCode(65 + i)}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold mb-1">
-                {language === 'zh' ? '序号' : 'Sequence Number'}
-              </label>
-              <input
-                type="number"
-                value={formData.sequence_number}
-                onChange={(e) => setFormData({ ...formData, sequence_number: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-200"
-                min={0}
-                data-testid="form-sequence-number"
-              />
             </div>
             <div>
               <label className="block text-sm font-bold mb-1">Points</label>

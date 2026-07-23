@@ -19,6 +19,9 @@ function ManageQuestions() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     subject_id: SUBJECTS[0].id,
+    form_name: '1',
+    chapter: '',
+    branch: '',
     level_num: 1,
     stage_num: 1,
     text_en: '',
@@ -155,6 +158,9 @@ function ManageQuestions() {
     const suffixZh = ' (副本)';
     const payload = {
       subject_id: q.subject_id,
+      form_name: q.form_name || '1',
+      chapter: q.chapter || '',
+      branch: q.branch || '',
       level_num: q.level_num,
       stage_num: q.stage_num,
       text_en: `${q.text_en || ''}${suffixEn}`.trim(),
@@ -184,6 +190,9 @@ function ManageQuestions() {
   const handleEdit = (question) => {
     setFormData({
       subject_id: question.subject_id,
+      form_name: question.form_name || '1',
+      chapter: question.chapter || '',
+      branch: question.branch || '',
       level_num: question.level_num,
       stage_num: question.stage_num,
       text_en: question.text_en,
@@ -279,6 +288,9 @@ function ManageQuestions() {
   const resetForm = () => {
     setFormData({
       subject_id: SUBJECTS[0].id,
+      form_name: '1',
+      chapter: '',
+      branch: '',
       level_num: 1,
       stage_num: 1,
       text_en: '',
@@ -487,6 +499,21 @@ function ManageQuestions() {
                       <span className="text-xs font-bold bg-zinc-100 text-zinc-600 px-2 py-1 rounded">
                         L{q.level_num} S{q.stage_num}
                       </span>
+                      {q.form_name && (
+                        <span className="text-xs font-bold bg-cyan-100 text-cyan-700 px-2 py-1 rounded">
+                          {q.form_name}
+                        </span>
+                      )}
+                      {q.chapter && (
+                        <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                          {language === 'zh' ? '章节' : 'Chapter'}: {q.chapter}
+                        </span>
+                      )}
+                      {q.branch && (
+                        <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                          {language === 'zh' ? '分支' : 'Branch'}: {q.branch}
+                        </span>
+                      )}
                       {q.difficulty && (
                         <span
                           className={`text-xs font-bold px-2 py-1 rounded ${

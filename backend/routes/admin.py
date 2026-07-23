@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 
 from core import db, get_admin_user
-from models import NoticeCreate, QuestionCreate, QuestionSequenceUpdate, SchoolCreate, User
+from models import NoticeCreate, QuestionCreate, QuestionSequenceUpdate, SchoolCreate, SubjectCreate, User
 
 router = APIRouter(tags=["admin"])
 
@@ -98,6 +98,36 @@ def _validate_school_logo(school_logo: Optional[str]):
         raise HTTPException(status_code=413, detail="School logo too large. Max ~1MB.")
 
 
+def _clean_subject_chapters(chapters: list[str]) -> list[str]:
+    return _clean_school_items(chapters)[:200]
+
+
+async def _subject_payload(subject: SubjectCreate) -> dict:
+    school = await db.schools.find_one({"id": subject.school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=400, detail="Selected school was not found")
+
+    forms = school.get("form_classes") or [
+        {"form_name": form_name, "classes": []} for form_name in school.get("forms", [])
+    ]
+    form_names = {str(group.get("form_name", "")).strip() for group in forms}
+    form_name = subject.form_name.strip()
+    if form_name not in form_names:
+        raise HTTPException(status_code=400, detail="Selected form does not belong to this school")
+
+    return {
+        "name_en": subject.name_en.strip(),
+        "name_zh": (subject.name_zh or subject.name_en).strip(),
+        "school_id": school["id"],
+        "school_name": school["school_name"],
+        "form_name": form_name,
+        "chapters": _clean_subject_chapters(subject.chapters),
+        "icon": subject.icon.strip() or "book-open",
+        "color": subject.color.strip() or "#8B5CF6",
+        "is_active": subject.is_active,
+    }
+
+
 # ---------------- Questions ----------------
 
 @router.get("/admin/questions")
@@ -156,6 +186,9 @@ async def create_question(question: QuestionCreate, admin: User = Depends(get_ad
     question_doc = {
         "id": str(uuid.uuid4()),
         "subject_id": question.subject_id,
+        "form_name": (question.form_name or "").strip(),
+        "chapter": (question.chapter or "").strip(),
+        "branch": (question.branch or "").strip(),
         "level_num": question.level_num,
         "stage_num": question.stage_num,
         "stage_id": stage_id,
@@ -191,7 +224,14 @@ async def update_question(
         {"id": question_id},
         {
             "$set": {
+                "subject_id": question.subject_id,
+                "level_num": question.level_num,
+                "stage_num": question.stage_num,
+                "stage_id": f"stage_{question.subject_id}_level_{question.level_num}_{question.stage_num}",
                 "text_en": question.text_en,
+                "form_name": (question.form_name or "").strip(),
+                "chapter": (question.chapter or "").strip(),
+                "branch": (question.branch or "").strip(),
                 "text_zh": question.text_zh,
                 "options_en": question.options_en,
                 "options_zh": question.options_zh,
@@ -207,7 +247,7 @@ async def update_question(
             }
         },
     )
-    if result.modified_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Question not found")
     return {"message": "Question updated"}
 
@@ -281,6 +321,9 @@ async def bulk_upload_questions(
 
             level_num = int(col(row, "level_num") or 1)
             stage_num = int(col(row, "stage_num") or 1)
+            form_name = col(row, "form_name", "form")
+            chapter = col(row, "chapter")
+            branch = col(row, "branch")
             text_en = col(row, "text_en")
             text_zh = col(row, "text_zh")
             if not text_en:
@@ -329,6 +372,9 @@ async def bulk_upload_questions(
                 {
                     "id": str(uuid.uuid4()),
                     "subject_id": subject_id,
+                    "form_name": form_name,
+                    "chapter": chapter,
+                    "branch": branch,
                     "level_num": level_num,
                     "stage_num": stage_num,
                     "stage_id": stage_id,
@@ -366,6 +412,55 @@ async def bulk_upload_questions(
         "errors": errors[:25],
         "error_count": len(errors),
     }
+
+
+# ---------------- Subjects ----------------
+
+@router.get("/admin/subjects")
+async def get_admin_subjects(admin: User = Depends(get_admin_user)):
+    return (
+        await db.subjects.find({}, {"_id": 0})
+        .sort([("school_name", 1), ("form_name", 1), ("name_en", 1)])
+        .limit(500)
+        .to_list(500)
+    )
+
+
+@router.post("/admin/subjects")
+async def create_subject(subject: SubjectCreate, admin: User = Depends(get_admin_user)):
+    payload = await _subject_payload(subject)
+    now = datetime.now(timezone.utc).isoformat()
+    subject_doc = {
+        "id": str(uuid.uuid4()),
+        **payload,
+        "created_at": now,
+        "updated_at": now,
+        "created_by": admin.id,
+    }
+    await db.subjects.insert_one(subject_doc)
+    return {"message": "Subject created", "id": subject_doc["id"]}
+
+
+@router.put("/admin/subjects/{subject_id}")
+async def update_subject(
+    subject_id: str, subject: SubjectCreate, admin: User = Depends(get_admin_user)
+):
+    existing = await db.subjects.find_one({"id": subject_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+    payload = await _subject_payload(subject)
+    payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.subjects.update_one({"id": subject_id}, {"$set": payload})
+    return {"message": "Subject updated"}
+
+
+@router.delete("/admin/subjects/{subject_id}")
+async def delete_subject(subject_id: str, admin: User = Depends(get_admin_user)):
+    result = await db.subjects.delete_one({"id": subject_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return {"message": "Subject deleted"}
 
 
 # ---------------- Schools ----------------
@@ -520,6 +615,7 @@ async def get_admin_reports(admin: User = Depends(get_admin_user)):
     total_quizzes = await db.quiz_history.count_documents({})
     total_questions = await db.edu_questions.count_documents({})
     total_schools = await db.schools.count_documents({})
+    total_subjects = await db.subjects.count_documents({})
     active_notices = await db.notices.count_documents({"is_active": True})
     total_tournaments = await db.tournaments.count_documents({})
 
@@ -556,6 +652,7 @@ async def get_admin_reports(admin: User = Depends(get_admin_user)):
         "total_quizzes_completed": total_quizzes,
         "total_questions": total_questions,
         "total_schools": total_schools,
+        "total_subjects": total_subjects,
         "active_notices": active_notices,
         "total_tournaments": total_tournaments,
         "active_users_7d": len(active_users),

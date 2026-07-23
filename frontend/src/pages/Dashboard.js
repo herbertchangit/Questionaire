@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 import {
   BarChart3,
   Bell,
+  BookMarked,
   BookOpen,
   Cake,
   Clock,
@@ -139,6 +140,7 @@ function Dashboard({ onSessionExpired }) {
         { label: language === 'zh' ? '题目' : 'Questions', icon: FileQuestion, path: '/admin/questions', testId: 'side-admin-questions' },
         { label: language === 'zh' ? '用户' : 'Users', icon: Users, path: '/admin/users', testId: 'side-admin-users' },
         { label: language === 'zh' ? '学校' : 'Schools', icon: School, path: '/admin/schools', testId: 'side-admin-schools' },
+        { label: language === 'zh' ? '科目' : 'Subjects', icon: BookMarked, path: '/admin/subjects', testId: 'side-admin-subjects' },
         { label: language === 'zh' ? '公告' : 'Notices', icon: Megaphone, path: '/admin/notices', testId: 'side-admin-notices' }
       ]
     },

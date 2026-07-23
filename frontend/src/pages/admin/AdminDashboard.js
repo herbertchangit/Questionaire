@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   ArrowLeft, Crown, FileQuestion, Users, Bell, BarChart3, 
-  BookOpen, Landmark, FlaskConical, Trophy, Clock, School
+  BookMarked, BookOpen, Landmark, FlaskConical, Trophy, Clock, School
 } from 'lucide-react';
 
 import { API_URL } from '../../lib/api';
@@ -77,6 +77,13 @@ function AdminDashboard() {
       statBg: 'bg-cyan-50',
       statText: 'text-cyan-600'
     },
+    indigo: {
+      hover: 'hover:border-indigo-300',
+      iconBg: 'bg-indigo-100',
+      iconText: 'text-indigo-500',
+      statBg: 'bg-indigo-50',
+      statText: 'text-indigo-600'
+    },
     pink: {
       hover: 'hover:border-pink-300',
       iconBg: 'bg-pink-100',
@@ -124,6 +131,14 @@ function AdminDashboard() {
       path: '/admin/schools',
       color: 'cyan',
       stat: countLabel(reports?.total_schools, 'school', 'schools', '学校')
+    },
+    {
+      icon: BookMarked,
+      title: language === 'zh' ? '管理科目' : 'Manage Subjects',
+      desc: language === 'zh' ? '按学校、年级和章节管理科目' : 'Manage subjects by school, form and chapter',
+      path: '/admin/subjects',
+      color: 'indigo',
+      stat: countLabel(reports?.total_subjects, 'subject', 'subjects', '科目')
     },
     { 
       icon: Bell, 
